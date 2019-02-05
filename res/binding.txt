@@ -1,0 +1,32 @@
+#HashTags should indicate comments
+
+@CONTEXT_1
+Key_W JUMP
+Mouse_ScrollY GAUGE #More Comments
+Key_U JUMP
+
+
+@CONTEXT_2
+Key_O YELL
+Key_U YELL
+Key_0 JUMP
+
+wsdgvSDG
+GSHDF
+Key_I 
+Key_P
+key_G YELL
+mouse_0 yell
+Key_T YELL#HashTags should not be allowed in names
+
+@#$!@%$
+
+@CONTEX#HashTags should also not be allowed in the context names
+
+@CONT##TEXT #Illegal
+
+@CONTEXT_3 #Should be ignored since CONTEXT_3 is not loaded by a definition file
+Key_F Yodel
+
+@CONTEXT_1
+Key_A FORWARD

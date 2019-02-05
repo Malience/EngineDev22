@@ -1,0 +1,14 @@
+#Comments are also allowed here
+@CONTEXT_1 1 TRUE
+ACTION JUMP
+ACTION SLIDE
+STATE FORWARD
+RANGE GAUGE
+
+@CONTEXT_2 2 TRUE
+ACTION DONT_JUMP
+ACTION YELL
+
+STATE BONUS
+
+CONTEXT_3 #Cannot declare new context without @ symbol, will be as keyword and discarded
