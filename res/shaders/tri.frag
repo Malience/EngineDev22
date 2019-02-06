@@ -7,14 +7,14 @@ layout(location = 2) in vec2 TexCoord;
 
 layout(location = 0) out vec4 FragColor;
 
-layout(binding = 1) uniform Textures { //Because these would be textures in more complex shaders
+layout(binding = 2) uniform TextureBuffer { //Because these would be textures in more complex shaders
 	vec4 diffuse; //Technically rgba, mainly vec4 for alignment reasons
 	vec4 ambient;
 	vec4 specular; //a == specular coeff
 	vec4 emissive;
 };
 
-layout(binding = 2) uniform PointLight {
+layout(binding = 3) uniform LightBuffer {
 	vec4 pos;
 	vec4 color;
 } light;

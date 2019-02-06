@@ -34,14 +34,14 @@ public class Matrix4f extends Struct implements NativeResource {
     public float m20() {return nm20(address());} public float m21() {return nm21(address());} public float m22() {return nm22(address());} public float m23() {return nm23(address());}
     public float m30() {return nm30(address());} public float m31() {return nm31(address());} public float m32() {return nm32(address());} public float m33() {return nm33(address());}
     //Safe Memory Assignment
-    public void m00(float value) {nm00(address(), value);} public void m01(float value) {nm01(address(), value);} 
-    public void m02(float value) {nm02(address(), value);} public void m03(float value) {nm03(address(), value);}
-    public void m10(float value) {nm10(address(), value);} public void m11(float value) {nm11(address(), value);} 
-    public void m12(float value) {nm12(address(), value);} public void m13(float value) {nm13(address(), value);}
-    public void m20(float value) {nm20(address(), value);} public void m21(float value) {nm21(address(), value);} 
-    public void m22(float value) {nm22(address(), value);} public void m23(float value) {nm23(address(), value);}
-    public void m30(float value) {nm30(address(), value);} public void m31(float value) {nm31(address(), value);} 
-    public void m32(float value) {nm32(address(), value);} public void m33(float value) {nm33(address(), value);}
+    public Matrix4f m00(float value) {nm00(address(), value); return this;} public Matrix4f m01(float value) {nm01(address(), value); return this;} 
+    public Matrix4f m02(float value) {nm02(address(), value); return this;} public Matrix4f m03(float value) {nm03(address(), value); return this;}
+    public Matrix4f m10(float value) {nm10(address(), value); return this;} public Matrix4f m11(float value) {nm11(address(), value); return this;} 
+    public Matrix4f m12(float value) {nm12(address(), value); return this;} public Matrix4f m13(float value) {nm13(address(), value); return this;}
+    public Matrix4f m20(float value) {nm20(address(), value); return this;} public Matrix4f m21(float value) {nm21(address(), value); return this;} 
+    public Matrix4f m22(float value) {nm22(address(), value); return this;} public Matrix4f m23(float value) {nm23(address(), value); return this;}
+    public Matrix4f m30(float value) {nm30(address(), value); return this;} public Matrix4f m31(float value) {nm31(address(), value); return this;} 
+    public Matrix4f m32(float value) {nm32(address(), value); return this;} public Matrix4f m33(float value) {nm33(address(), value); return this;}
 	//Property Retrieval and Assignment
 	public int prop() {return  prop;}
 	public void prop(int value) {prop = value;}

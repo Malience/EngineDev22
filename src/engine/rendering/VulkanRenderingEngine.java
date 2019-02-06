@@ -52,6 +52,9 @@ import org.lwjgl.vulkan.VkWriteDescriptorSet;
 import api.InputAPI;
 import api.vulkan.CommandBuffer;
 import api.vulkan.CommandPool;
+import api.vulkan.DescriptorLayout;
+import api.vulkan.DescriptorPool;
+import api.vulkan.DescriptorSet;
 import api.vulkan.Device;
 import api.vulkan.Framebuffer;
 import api.vulkan.HotSwap;
@@ -79,6 +82,7 @@ import math.Matrix4f;
 import math.Quaternion;
 import math.Sphere;
 import math.Vector3f;
+import math.Vector4f;
 
 public class VulkanRenderingEngine extends RenderingEngine {
 	IntBuffer intbuffer;
@@ -140,170 +144,110 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	Vertex[] vertices;
 	IntBuffer indices;
+	Quaternion cameraRot = new Quaternion();
+	float x, y;
+	static Matrix4f.Buffer viewProjection;
+	static Matrix4f view, projection;
+	static {
+		viewProjection = Matrix4f.calloc(2);
+		view = viewProjection.get(0);
+		projection = viewProjection.get(1);
+	}
+	
+	DescriptorLayout desLayout;
+	DescriptorPool desPool;
+	DescriptorSet[] desSet;
+	BufferObject vertexBuffer, indexBuffer, viewProjectionBuffer, lightBuffer;
+	BufferObject[] modelBuffer, texturesBuffer;
 	
 	public void createVertexBuffer() {
 		int vdiv = 20; int hdiv = 20;
 		vertices = Sphere.generateSphereVertices(1, vdiv, hdiv);
 		indices = Sphere.generateSphereIndices(vdiv, hdiv);
-//		vertices = new Vertex[4];
-//		vertices[0] = new Vertex(-.5f, -.5f, 0, 1, 0, 0);
-//		vertices[1] = new Vertex(.5f, -.5f, 0, 0, 1, 0);
-//		vertices[2] = new Vertex(.5f, .5f, 0, 0, 0, 1);
-//		vertices[3] = new Vertex(-.5f, .5f, 0, 1, 1, 1);
 		
-//		float sq22 = (float)Math.sqrt(2)/2;
-//		
-//		vertices = new Vertex[5];
-//		
-//		vertices[0] = new Vertex(0, 1, 0, 1, 0, 0);
-//		vertices[1] = new Vertex(1, 0, 0, 0, 1, 0);
-//		vertices[2] = new Vertex(-sq22, 0, sq22, 0, 0, 1);
-//		vertices[3] = new Vertex(-sq22, 0, -sq22, 1, 1, 0);
-//		vertices[4] = new Vertex(0,-1, 0, 1, 1, 1);
-//		
-//		indices.put(new int[]{
-//				0, 1, 2, 
-//				1, 4, 2,
-//				0, 2, 3, 
-//				2, 4, 3, 
-//				0, 3, 1,
-//				4, 1, 3,
-//		});
-//		//indices.put(new int[]{0, 3, 1});
-//		indices.flip();
-		
-//		indices.put(new int[]{0, 1, 2, 2, 3, 0});
-//		indices.flip();
-		//long stagingbuffer = createBuffer(vertices, VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		//vb = new VertexBuffer(physicalDevice, device, vertices, VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		vertexBuffer = new BufferObject(physicalDevice, device);
 		vertexBuffer.createVertexBuffer(vertices.length * Vertex.SIZEOF);
 		vertexBuffer.load(graphicsQueue, commandPool, vertices);
-//		vertexBuffer.load(graphicsQueue, commandPool, indices);
-//		
-//		vertexBuffer.load(graphicsQueue, commandPool, vertices);
 		
 		indexBuffer = new BufferObject(physicalDevice, device);
 		indexBuffer.createIndexBuffer(indices.limit() * 4);
 		indexBuffer.load(graphicsQueue, commandPool, indices);
 		
-		int uniformSize = Matrix4f.SIZEOF * 3;
-		cameraUniform = new BufferObject(physicalDevice, device);
-		cameraUniform.createUniformBuffer(uniformSize);
+		viewProjectionBuffer = new BufferObject(physicalDevice, device);
+		viewProjectionBuffer.createUniformBuffer(16 * 4 * 2);
 		
-		texturesUniform = new BufferObject(physicalDevice, device);
-		texturesUniform.createUniformBuffer(4 * 4 * 4);
+		lightBuffer = new BufferObject(physicalDevice, device);
+		lightBuffer.createUniformBuffer(4 * 2 * 4);
 		
-		lightUniform = new BufferObject(physicalDevice, device);
-		lightUniform.createUniformBuffer(4 * 2 * 4);
-
+		float near = 0.1f, far = 40f;
+		float aspect = 800f / 600f;
+		
+		projection.perspective(90f, aspect, near, far);
+		view.identity();
+		view.translation(0, 0, -12f);
+		viewProjectionBuffer.map(viewProjection);
+		Quaternion q = new Quaternion();
+		InputAPI.setKeyCallback(window.getHandle(), (int button, int action, int mods) -> {
+			//if(action != InputAPI.HOLD && action != InputAPI.PRESS) return;
+			float rotSpeed = 100;
+			if(button == InputAPI.KEY_W) {
+				y += rotSpeed * Time.getDelta();
+				if(y > 89f) y = 89f;
+			} else if(button == InputAPI.KEY_S) {
+				y -= rotSpeed * Time.getDelta();
+				if(y < -89f) y = -89f;
+			} else if(button == InputAPI.KEY_A) {
+				x += rotSpeed * Time.getDelta();
+				if(x > 360f) x -= 360f;
+			} else if(button == InputAPI.KEY_D) {
+				x -= rotSpeed * Time.getDelta();
+				if(x < 0f) x += 360f;
+			}
+			cameraRot.axisAngle(0, 1, 0, x * Constants.RADIAN).mul(q.axisAngle(1, 0, 0, y * Constants.RADIAN));
+			view.setRotation(q);
+			view.translation(0, 0, -12f);
+			viewProjectionBuffer.map(viewProjection);
+		});
+		
+		desLayout = new DescriptorLayout(device, 2, 2);
+		desPool = new DescriptorPool(device, 96);
+		
+		desSet = new DescriptorSet[96];
+		modelBuffer = new BufferObject[96];
+		texturesBuffer = new BufferObject[96];
+		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
-			LongBuffer lb = stack.mallocLong(1);
-			VkDescriptorPoolSize.Buffer poolSize = VkDescriptorPoolSize.callocStack(1, stack)
-			.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-			.descriptorCount(1);
+			Matrix4f.Buffer model = Matrix4f.mallocStack(96, stack);
+			Matrix4f.Buffer texture = Matrix4f.mallocStack(96, stack);
+			for(int i = 0; i < 96; i++) model.get(i).identity();
 			
-			VkDescriptorPoolCreateInfo poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-			.sType(VK10.VK_OBJECT_TYPE_DESCRIPTOR_POOL)
-			.pPoolSizes(poolSize)
-			.maxSets(3);
+			model.get(0).translation(3, 0, 0);
+			model.get(1).translation(0, 0, 0);
 			
-			VK10.vkCreateDescriptorPool(device.device, poolInfo, null, lb);
-			descriptorPool = lb.get(0);
-//			IntBuffer width = stack.mallocInt(1), height = stack.mallocInt(1), channels = stack.mallocInt(1);
-//			ByteBuffer tex = STBImage.stbi_load("./res/textures/mud.png", width, height, channels, STBImage.STBI_rgb_alpha);
-//			int texSize = width.get(0) * height.get(0) * 4;
-//			//System.out.println(tex.limit());
-//			//Create Buffer
-//			VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
-//			.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-//			.size(texSize)
-//			.usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-//			.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
-//			
-//			if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
-//				Debug.error("API", "Texture Buffer creation failed!");
-//			texBuffer = lb.get(0);
-//			
-//			//Memory Requirements
-//			VkMemoryRequirements req = VkMemoryRequirements.mallocStack(stack);
-//			vkGetBufferMemoryRequirements(device.device, texBuffer, req);
-//			//Prop and Allocate
-//			VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-//			vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-//			
-//			int num = pdeviceprop.memoryTypeCount();
-//			int filter = req.memoryTypeBits();
-//			int index = -1;
-//			for(int i = 0; i < num; i++) {
-//				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0) {
-//					index = i; break;
-//				}
-//			}
-//			//System.out.println(index);
-//			VkMemoryAllocateInfo meminfo = VkMemoryAllocateInfo.callocStack(stack)
-//			.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-//			.allocationSize(req.size())
-//			.memoryTypeIndex(index);
-//			
-//			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-//				Debug.error("API", "Allocate Memory failed!");
-//			if(vkBindBufferMemory(device.device, texBuffer, lb.get(0), 0) != VK_SUCCESS)
-//				Debug.error("API", "Bind Buffer Memory failed!");
-//			texMemory = lb.get(0);
-//			
-//			PointerBuffer pb = stack.mallocPointer(1);
-//			vkMapMemory(device.device, texMemory, 0, texSize, 0, pb);
-//			MemoryUtil.memCopy(MemoryUtil.memAddress(tex), pb.get(0), texSize);
-//			vkUnmapMemory(device.device, texMemory);
-//			
-//			STBImage.stbi_image_free(tex);
-//			
-//			VkImageCreateInfo imageInfo = VkImageCreateInfo.callocStack(stack)
-//			.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
-//			.imageType(VK10.VK_IMAGE_TYPE_2D)
-//			.mipLevels(1)
-//			.arrayLayers(1)
-//			.format(VK10.VK_FORMAT_R8G8B8A8_UNORM)
-//			.tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
-//			.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-//			.usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT)
-//			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-//			.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
-//			.flags(0);
-//			imageInfo.extent().width(width.get(0)).height(height.get(0)).depth(1);
-//			
-//			if(VK10.vkCreateImage(device.device, imageInfo, null, lb) != VK_SUCCESS)
-//				Debug.error("API", "Image failed to create!");
-//			texture = lb.get(0);
-//			
-//			//Memory Requirements
-//			VK10.vkGetImageMemoryRequirements(device.device, texture, req);
-//			//Prop and Allocate
-//			//VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-//			//vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-//			
-//			//int num = pdeviceprop.memoryTypeCount();
-//			filter = req.memoryTypeBits();
-//			index = -1;
-//			for(int i = 0; i < num; i++) {
-//				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
-//					index = i; break;
-//				}
-//			}
-//			
-//			meminfo.allocationSize(req.size())
-//			.memoryTypeIndex(index);
-//			
-//			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-//				Debug.error("API", "Allocate Memory failed!");
-//			textureMemory = lb.get(0);
-//			VK10.vkBindImageMemory(device.device, texture, textureMemory, 0L);
+			texture.get(0).m00(1.0f).m03(1.0f); //Red
+			texture.get(1).m01(1.0f).m03(1.0f); //Green
+			
+			for(int i = 0; i < 2; i++) {
+				modelBuffer[i] = new BufferObject(physicalDevice, device);
+				modelBuffer[i].createUniformBuffer(16 * 4);
+				texturesBuffer[i] = new BufferObject(physicalDevice, device);
+				texturesBuffer[i].createUniformBuffer(4 * 4 * 4);
+				desSet[i] = new DescriptorSet(device, desPool, desLayout);
+				
+				desSet[i].bind(viewProjectionBuffer, 0);
+				desSet[i].bind(modelBuffer[i], 1);
+				desSet[i].bind(texturesBuffer[i], 2);
+				desSet[i].bind(lightBuffer, 3);
+				
+				modelBuffer[i].map(model.get(i));
+				texturesBuffer[i].map(texture.get(i));
+			}
+		
 		}
+		Vector4f.Buffer v2 = Vector4f.calloc(2);
+		lightBuffer.map(v2);
 	}
 	long texBuffer, texMemory, texture, textureMemory;
-	long descriptorPool, cameraSet, texturesSet, lightSet;
-	BufferObject vertexBuffer, indexBuffer, cameraUniform, texturesUniform, lightUniform;
 	
 	public void recordCommandBuffer() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
@@ -315,11 +259,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			cb.bindPipelineGraphics(pipeline);
 			cb.bindVertexBuffer(vertexBuffer);
 			cb.bindIndexBuffer(indexBuffer);
-			//cb.draw(3, 1, 0, 0);
-			cb.bindUniforms(pipeline.layout, stack.longs(cameraSet));//, texturesSet, lightSet));
-			//cb.updateUniforms(pipeline.layout, texturesSet);
-			//cb.updateUniforms(pipeline.layout, lightSet);
-			cb.draw(indices.limit());
+			for(int j = 0; j < 96; j++) {
+				if(desSet[j] == null) break;
+				cb.bindUniforms(pipeline.layout, stack.longs(desSet[j].set));
+				cb.draw(indices.limit());
+			}
 			cb.endRenderPass();
 			cb.end();
 		}
@@ -330,79 +274,16 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		swapchain = new Swapchain(device, surface);
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
-		pipeline = new Pipeline(device, swapchain, renderpass, vert, frag);
-		try(MemoryStack stack = MemoryStack.stackPush()) {
-			LongBuffer lb = stack.mallocLong(3);
-		VkDescriptorSetAllocateInfo setAllocateInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
-		.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-		.descriptorPool(descriptorPool)
-		.pSetLayouts(stack.longs(pipeline.cameraLayout));//, pipeline.texturesLayout, pipeline.lightLayout));
-		
-		int result = VK10.vkAllocateDescriptorSets(device.device, setAllocateInfo, lb);
-		if(result != VK_SUCCESS) {
-			Debug.error("API", "Failed to Allocate Descriptor Sets!");
-			System.out.println(result);
-		}
-		cameraSet = lb.get(0);
-		texturesSet = lb.get(1);
-		lightSet = lb.get(2);
-		
-		VkDescriptorBufferInfo.Buffer desBufferInfo0 = VkDescriptorBufferInfo.callocStack(1, stack)
-		.buffer(cameraUniform.getBuffer())
-		.offset(0L)
-		.range(VK10.VK_WHOLE_SIZE);
-		VkDescriptorBufferInfo.Buffer desBufferInfo1 = VkDescriptorBufferInfo.callocStack(1, stack)
-		.buffer(texturesUniform.getBuffer())
-		.offset(0L)
-		.range(VK10.VK_WHOLE_SIZE);
-		VkDescriptorBufferInfo.Buffer desBufferInfo2 = VkDescriptorBufferInfo.callocStack(1, stack)
-		.buffer(lightUniform.getBuffer())
-		.offset(0L)
-		.range(VK10.VK_WHOLE_SIZE);
-		
-		VkWriteDescriptorSet.Buffer desWrite = VkWriteDescriptorSet.callocStack(3, stack)
-		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-		.dstSet(cameraSet)
-		.dstBinding(0)
-		.dstArrayElement(0)
-		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.pBufferInfo(desBufferInfo0)
-		.pImageInfo(null)
-		.pTexelBufferView(null);
-		desWrite.get(1)
-		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-		.dstSet(cameraSet)
-		.dstBinding(1)
-		.dstArrayElement(0)
-		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.pBufferInfo(desBufferInfo1)
-		.pImageInfo(null)
-		.pTexelBufferView(null);
-		desWrite.get(2)
-		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-		.dstSet(cameraSet)
-		.dstBinding(2)
-		.dstArrayElement(0)
-		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.pBufferInfo(desBufferInfo2)
-		.pImageInfo(null)
-		.pTexelBufferView(null);
-		
-		VK10.vkUpdateDescriptorSets(device.device, desWrite, null);
-		
-		
-		
-		
+		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
 		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass);
 		recordCommandBuffer();
-		}
 	}
 	
 	public void createSwapchain(IntBuffer width, IntBuffer height) {
 		swapchain = new Swapchain(device, surface, width, height);
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
-		pipeline = new Pipeline(device, swapchain, renderpass, vert, frag);
+		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
 		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass);
 		recordCommandBuffer();
 	}
@@ -433,32 +314,9 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	private static int currentFrame = 0;
 	private static boolean framebufferResized = false;
 	QueueSubmitInfo info = new QueueSubmitInfo();
-	Vector3f up = new Vector3f(0,1,0);
-	float rot = 0;
-	float rotSpeed = 100;
-	float x, y;
-	Quaternion cameraRot = new Quaternion();
-	Quaternion q = new Quaternion();
 	@Override
 	public void run() {
 		InputAPI.pollEvents();
-		if(GLFW.glfwGetKey(window.getHandle(), InputAPI.KEY_W) == GLFW.GLFW_PRESS) {
-			y += rotSpeed * Time.getDelta();
-			if(y > 89f) y = 89f;
-		} if(GLFW.glfwGetKey(window.getHandle(), InputAPI.KEY_S) == GLFW.GLFW_PRESS) {
-			y -= rotSpeed * Time.getDelta();
-			if(y < -89f) y = -89f;
-		}
-		
-		if(GLFW.glfwGetKey(window.getHandle(), InputAPI.KEY_A) == GLFW.GLFW_PRESS) {
-			x += rotSpeed * Time.getDelta();
-			if(x > 360f) x -= 360f;
-		} if(GLFW.glfwGetKey(window.getHandle(), InputAPI.KEY_D) == GLFW.GLFW_PRESS) {
-			x -= rotSpeed * Time.getDelta();
-			if(x < 0f) x += 360f;
-		}
-		cameraRot.axisAngle(0, 1, 0, x * Constants.RADIAN).mul(q.axisAngle(1, 0, 0, y * Constants.RADIAN));
-		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			IntBuffer ib = stack.mallocInt(1);
 			
@@ -478,54 +336,6 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			
 			int imageIndex = ib.get(0);
 			VK10.vkResetFences(device.device, inFlightFence);
-//			rot += 90f * Time.getDelta();
-//			if(rot >= 360f) rot -= 360f;
-//			model.setRotation(up, rot * Constant.RADIAN);
-			
-			device.waitIdle();
-			
-			int size = 3 * Matrix4f.SIZEOF;
-			//System.out.println(Matrix4f.SIZEOF);
-			//System.out.println(Matrix4f.ALIGNOF);
-			
-			PointerBuffer pb = stack.mallocPointer(1);
-			result = vkMapMemory(device.device, cameraUniform.getMemory(), 0, size, 0, pb);
-			if(result != VK_SUCCESS)
-				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
-			
-			//MemoryUtil.memCopy(camera.address(), pb.get(0), size);
-			HotSwap.matrixUpload(pb.get(0), size, cameraRot);
-			vkUnmapMemory(device.device, cameraUniform.getMemory());
-			size = 4 * 4 * 4;
-			result = vkMapMemory(device.device, texturesUniform.getMemory(), 0, size, 0, pb);
-			if(result != VK_SUCCESS)
-				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
-			
-			FloatBuffer fb = stack.mallocFloat(4 * 4);
-			fb.put(0).put(1).put(0).put(1);
-			fb.put(0).put(0).put(0).put(0);
-			fb.put(0).put(0).put(0).put(0);
-			fb.put(0).put(0).put(0).put(0);
-			fb.flip();
-			MemoryUtil.memCopy(MemoryUtil.memAddress(fb), pb.get(0), size);
-			vkUnmapMemory(device.device, texturesUniform.getMemory());
-			
-			size = 4 * 2 * 4;
-			result = vkMapMemory(device.device, lightUniform.getMemory(), 0, size, 0, pb);
-			if(result != VK_SUCCESS)
-				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
-			
-			fb = stack.mallocFloat(4 * 2);
-			fb.put(0).put(0).put(0).put(0);
-			fb.put(0).put(0).put(0).put(0);
-			fb.flip();
-			MemoryUtil.memCopy(MemoryUtil.memAddress(fb), pb.get(0), size);
-			vkUnmapMemory(device.device, lightUniform.getMemory());
-			
-			device.waitIdle();
-			
-			
-			device.waitIdle();
 			
 			info.pCommandBuffers(stack.pointers(commandBuffers[imageIndex]));
 			info.pWaitSemaphores(imageAvailableSemaphore);
@@ -565,4 +375,94 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		
 		super.dispose();
 	}
+	
+//	IntBuffer width = stack.mallocInt(1), height = stack.mallocInt(1), channels = stack.mallocInt(1);
+//	ByteBuffer tex = STBImage.stbi_load("./res/textures/mud.png", width, height, channels, STBImage.STBI_rgb_alpha);
+//	int texSize = width.get(0) * height.get(0) * 4;
+//	//System.out.println(tex.limit());
+//	//Create Buffer
+//	VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
+//	.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+//	.size(texSize)
+//	.usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+//	.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+//	
+//	if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
+//		Debug.error("API", "Texture Buffer creation failed!");
+//	texBuffer = lb.get(0);
+//	
+//	//Memory Requirements
+//	VkMemoryRequirements req = VkMemoryRequirements.mallocStack(stack);
+//	vkGetBufferMemoryRequirements(device.device, texBuffer, req);
+//	//Prop and Allocate
+//	VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
+//	vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
+//	
+//	int num = pdeviceprop.memoryTypeCount();
+//	int filter = req.memoryTypeBits();
+//	int index = -1;
+//	for(int i = 0; i < num; i++) {
+//		if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0) {
+//			index = i; break;
+//		}
+//	}
+//	//System.out.println(index);
+//	VkMemoryAllocateInfo meminfo = VkMemoryAllocateInfo.callocStack(stack)
+//	.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+//	.allocationSize(req.size())
+//	.memoryTypeIndex(index);
+//	
+//	if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
+//		Debug.error("API", "Allocate Memory failed!");
+//	if(vkBindBufferMemory(device.device, texBuffer, lb.get(0), 0) != VK_SUCCESS)
+//		Debug.error("API", "Bind Buffer Memory failed!");
+//	texMemory = lb.get(0);
+//	
+//	PointerBuffer pb = stack.mallocPointer(1);
+//	vkMapMemory(device.device, texMemory, 0, texSize, 0, pb);
+//	MemoryUtil.memCopy(MemoryUtil.memAddress(tex), pb.get(0), texSize);
+//	vkUnmapMemory(device.device, texMemory);
+//	
+//	STBImage.stbi_image_free(tex);
+//	
+//	VkImageCreateInfo imageInfo = VkImageCreateInfo.callocStack(stack)
+//	.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+//	.imageType(VK10.VK_IMAGE_TYPE_2D)
+//	.mipLevels(1)
+//	.arrayLayers(1)
+//	.format(VK10.VK_FORMAT_R8G8B8A8_UNORM)
+//	.tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
+//	.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+//	.usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT)
+//	.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
+//	.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+//	.flags(0);
+//	imageInfo.extent().width(width.get(0)).height(height.get(0)).depth(1);
+//	
+//	if(VK10.vkCreateImage(device.device, imageInfo, null, lb) != VK_SUCCESS)
+//		Debug.error("API", "Image failed to create!");
+//	texture = lb.get(0);
+//	
+//	//Memory Requirements
+//	VK10.vkGetImageMemoryRequirements(device.device, texture, req);
+//	//Prop and Allocate
+//	//VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
+//	//vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
+//	
+//	//int num = pdeviceprop.memoryTypeCount();
+//	filter = req.memoryTypeBits();
+//	index = -1;
+//	for(int i = 0; i < num; i++) {
+//		if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
+//			index = i; break;
+//		}
+//	}
+//	
+//	meminfo.allocationSize(req.size())
+//	.memoryTypeIndex(index);
+//	
+//	if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
+//		Debug.error("API", "Allocate Memory failed!");
+//	textureMemory = lb.get(0);
+//	VK10.vkBindImageMemory(device.device, texture, textureMemory, 0L);
 }

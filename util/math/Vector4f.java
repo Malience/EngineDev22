@@ -85,6 +85,7 @@ public class Vector4f extends Struct implements NativeResource {
     public static Vector4f create(long address) {return new Vector4f(address, null);}
     public static Vector4f createSafe(long address) {return address == NULL ? null : create(address);}
     //Buffer Allocation
+    //TODO: MAlloc isn't working, thats a pretty big issue
     public static Vector4f.Buffer malloc(int capacity) {return create(__checkMalloc(capacity, SIZEOF), capacity);}
     public static Vector4f.Buffer calloc(int capacity) {return create(nmemCallocChecked(capacity, SIZEOF), capacity);}
     public static Vector4f.Buffer create(int capacity) {return new Buffer(__create(capacity, SIZEOF));}

@@ -8,8 +8,12 @@ import java.nio.LongBuffer;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.CustomBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.system.Pointer;
+import org.lwjgl.system.Struct;
+import org.lwjgl.system.StructBuffer;
 import org.lwjgl.vulkan.VkBufferCreateInfo;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkMemoryAllocateInfo;
@@ -151,16 +155,19 @@ public class BufferObject {
 	public void unmap() {vkUnmapMemory(device, memory);}
 	private void unmap(long memory) {vkUnmapMemory(device, memory);}
 	
-	public void map(java.nio.Buffer data) {
-		int size = data.limit();
+	public void map(long data, int size) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			PointerBuffer pb = stack.mallocPointer(1);
 			if(vkMapMemory(device, memory, 0, size, 0, pb) != VK_SUCCESS)
 				Debug.error("API", "Memory Map failed!");
-			MemoryUtil.memCopy(MemoryUtil.memAddress(data), pb.get(0), size);
+			MemoryUtil.memCopy(data, pb.get(0), size);
 			vkUnmapMemory(device, memory);
 		}
 	}
+	
+	public void map(java.nio.Buffer data) {map(MemoryUtil.memAddress(data), data.limit());}
+	public <SELF extends CustomBuffer<SELF>> void map(CustomBuffer<SELF> data) {map(data.address(), data.sizeof() * data.limit());}
+	public void map(Struct data) {map(data.address(), data.sizeof());}
 	
 	public void destroy() {
 		vkDestroyBuffer(device, buffer, null);
