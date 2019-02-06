@@ -10,12 +10,14 @@ import math.Vector3f;
 
 public class Vertex {
 	public Vector3f pos;
-	public Vector3f color;
+	public Vector3f normal;
+	public Vector2f texCoord;
 	
 	public Vertex() {}
-	public Vertex(float x, float y, float z, float r, float g, float b) {
+	public Vertex(float x, float y, float z, float nx, float ny, float nz, float s, float t) {
 		pos = new Vector3f(x, y, z);
-		color = new Vector3f(r, g, b);
+		normal = new Vector3f(nx, ny, nz);
+		texCoord = new Vector2f(s, t);
 	}
 	
 	
@@ -29,8 +31,8 @@ public class Vertex {
 		return description;
 	}
 	
-	public static VkVertexInputAttributeDescription.Buffer getAttributeDescriptions() {return getAttributeDescriptions(VkVertexInputAttributeDescription.calloc(2));}
-	public static VkVertexInputAttributeDescription.Buffer getAttributeDescriptions(MemoryStack stack) {return getAttributeDescriptions(VkVertexInputAttributeDescription.callocStack(2, stack));}
+	public static VkVertexInputAttributeDescription.Buffer getAttributeDescriptions() {return getAttributeDescriptions(VkVertexInputAttributeDescription.calloc(3));}
+	public static VkVertexInputAttributeDescription.Buffer getAttributeDescriptions(MemoryStack stack) {return getAttributeDescriptions(VkVertexInputAttributeDescription.callocStack(3, stack));}
 	private static VkVertexInputAttributeDescription.Buffer getAttributeDescriptions(VkVertexInputAttributeDescription.Buffer descriptions) {
 		descriptions.get(0)
 		.binding(0)
@@ -41,21 +43,27 @@ public class Vertex {
 		.binding(0)
 		.location(1)
 		.format(VK10.VK_FORMAT_R32G32B32_SFLOAT)
-		.offset(COLOR);
+		.offset(NORMAL);
+		descriptions.get(2)
+		.binding(0)
+		.location(2)
+		.format(VK10.VK_FORMAT_R32G32_SFLOAT)
+		.offset(TEXCOORD);
 		return descriptions;
 	}
 	
     public static final int SIZEOF;
-    public static final int POS, COLOR;
+    public static final int POS, NORMAL, TEXCOORD;
 
     static {
-        SIZEOF = Vector3f.SIZEOF + Vector3f.SIZEOF;
+        SIZEOF = Vector3f.SIZEOF + Vector3f.SIZEOF + Vector2f.SIZEOF;
         
         POS = 0;
-        COLOR = Vector3f.SIZEOF;
+        NORMAL = Vector3f.SIZEOF;
+        TEXCOORD = Vector3f.SIZEOF * 2;
     }
     
     public String toString() {
-    	return "Pos: " + pos.x() + ", " + pos.y() + " Color: " + color.x() + ", " + color.y() + ", " + color.z();
+    	return "Pos: " + pos.x() + ", " + pos.y() + ", " + pos.z() + "Normal: " + normal.x() + ", " + normal.y() + ", " + normal.z() + " TexCoord: " + texCoord.x() + ", " + texCoord.y();
     }
 }

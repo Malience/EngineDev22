@@ -40,18 +40,23 @@ public class Pipeline {
 	public long pipeline;
 	public VkExtent2D extent;
 	public long layout;
-	public long setLayout;
+	public long cameraLayout, texturesLayout, lightLayout;
 	public Pipeline(Device device, Swapchain swapchain, Renderpass renderpass, Shader... shaders) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			this.device = device.device;
 			LongBuffer lb = stack.mallocLong(1);
 			
-			VkDescriptorSetLayoutBinding.Buffer desLayout = VkDescriptorSetLayoutBinding.callocStack(1, stack)
+			VkDescriptorSetLayoutBinding.Buffer desLayout = VkDescriptorSetLayoutBinding.callocStack(3, stack)
 			.binding(0)
 			.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 			.descriptorCount(1)
 			.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 			.pImmutableSamplers(null);
+			desLayout.get(1).set(desLayout.get(0))
+			.binding(1)
+			.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
+			desLayout.get(2).set(desLayout.get(1))
+			.binding(2);
 			
 			VkDescriptorSetLayoutCreateInfo layoutinfo = VkDescriptorSetLayoutCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
@@ -59,7 +64,16 @@ public class Pipeline {
 			
 			if(vkCreateDescriptorSetLayout(this.device, layoutinfo, null, lb) != VK_SUCCESS)
 				Debug.error("API", "Failed to create descriptor set layout!");
-			setLayout = lb.get(0);
+			cameraLayout = lb.get(0);
+			
+//			desLayout.binding(1).stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT);
+//			if(vkCreateDescriptorSetLayout(this.device, layoutinfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Failed to create descriptor set layout!");
+//			texturesLayout = lb.get(0);
+//			desLayout.binding(0);
+//			if(vkCreateDescriptorSetLayout(this.device, layoutinfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Failed to create descriptor set layout!");
+//			lightLayout = lb.get(0);
 			
 			VkPipelineShaderStageCreateInfo.Buffer stages = VkPipelineShaderStageCreateInfo.callocStack(2, stack);
 			stages.get(0).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
@@ -124,7 +138,7 @@ public class Pipeline {
 			
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo = VkPipelineLayoutCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-			.pSetLayouts(lb);
+			.pSetLayouts(stack.longs(cameraLayout));//, texturesLayout, lightLayout));
 			
 			vkCreatePipelineLayout(this.device, pipelineLayoutInfo, null, lb);
 			
@@ -150,7 +164,9 @@ public class Pipeline {
 	public void dispose() {
 		VK10.vkDestroyPipelineLayout(this.device, layout, null);
 		VK10.vkDestroyPipeline(this.device, pipeline, null);
-		VK10.vkDestroyDescriptorSetLayout(device, setLayout, null);
+		VK10.vkDestroyDescriptorSetLayout(device, cameraLayout, null);
+		VK10.vkDestroyDescriptorSetLayout(device, texturesLayout, null);
+		VK10.vkDestroyDescriptorSetLayout(device, lightLayout, null);
 	}
 	
 }

@@ -13,6 +13,7 @@ public class VulkanTest {
 	public static InputEngine input;
 	
 	public static void main(String [] args) {
+		org.lwjgl.system.Configuration.STACK_SIZE.set(9000);
 		Systems.system_init(10);
 		
 		input = new InputEngine();

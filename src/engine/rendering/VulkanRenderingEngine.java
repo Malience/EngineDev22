@@ -142,9 +142,9 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	IntBuffer indices;
 	
 	public void createVertexBuffer() {
-		int vdiv = 50; int hdiv = 50;
-		indices = MemoryUtil.memAllocInt(vdiv * hdiv * 6);
-		vertices = Sphere.generateSphere(1, vdiv, hdiv, indices);
+		int vdiv = 20; int hdiv = 20;
+		vertices = Sphere.generateSphereVertices(1, vdiv, hdiv);
+		indices = Sphere.generateSphereIndices(vdiv, hdiv);
 //		vertices = new Vertex[4];
 //		vertices[0] = new Vertex(-.5f, -.5f, 0, 1, 0, 0);
 //		vertices[1] = new Vertex(.5f, -.5f, 0, 0, 1, 0);
@@ -188,8 +188,14 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		indexBuffer.load(graphicsQueue, commandPool, indices);
 		
 		int uniformSize = Matrix4f.SIZEOF * 3;
-		uniformBuffer = new BufferObject(physicalDevice, device);
-		uniformBuffer.createUniformBuffer(uniformSize);
+		cameraUniform = new BufferObject(physicalDevice, device);
+		cameraUniform.createUniformBuffer(uniformSize);
+		
+		texturesUniform = new BufferObject(physicalDevice, device);
+		texturesUniform.createUniformBuffer(4 * 4 * 4);
+		
+		lightUniform = new BufferObject(physicalDevice, device);
+		lightUniform.createUniformBuffer(4 * 2 * 4);
 
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			LongBuffer lb = stack.mallocLong(1);
@@ -200,106 +206,107 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			VkDescriptorPoolCreateInfo poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
 			.sType(VK10.VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 			.pPoolSizes(poolSize)
-			.maxSets(1);
+			.maxSets(3);
 			
 			VK10.vkCreateDescriptorPool(device.device, poolInfo, null, lb);
 			descriptorPool = lb.get(0);
-			IntBuffer width = stack.mallocInt(1), height = stack.mallocInt(1), channels = stack.mallocInt(1);
-			ByteBuffer tex = STBImage.stbi_load("./res/textures/mud.png", width, height, channels, STBImage.STBI_rgb_alpha);
-			int texSize = width.get(0) * height.get(0) * 4;
-			//System.out.println(tex.limit());
-			//Create Buffer
-			VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
-			.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-			.size(texSize)
-			.usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-			.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
-			
-			if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
-				Debug.error("API", "Texture Buffer creation failed!");
-			texBuffer = lb.get(0);
-			
-			//Memory Requirements
-			VkMemoryRequirements req = VkMemoryRequirements.mallocStack(stack);
-			vkGetBufferMemoryRequirements(device.device, texBuffer, req);
-			//Prop and Allocate
-			VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-			
-			int num = pdeviceprop.memoryTypeCount();
-			int filter = req.memoryTypeBits();
-			int index = -1;
-			for(int i = 0; i < num; i++) {
-				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0) {
-					index = i; break;
-				}
-			}
-			//System.out.println(index);
-			VkMemoryAllocateInfo meminfo = VkMemoryAllocateInfo.callocStack(stack)
-			.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-			.allocationSize(req.size())
-			.memoryTypeIndex(index);
-			
-			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-				Debug.error("API", "Allocate Memory failed!");
-			if(vkBindBufferMemory(device.device, texBuffer, lb.get(0), 0) != VK_SUCCESS)
-				Debug.error("API", "Bind Buffer Memory failed!");
-			texMemory = lb.get(0);
-			
-			PointerBuffer pb = stack.mallocPointer(1);
-			vkMapMemory(device.device, texMemory, 0, texSize, 0, pb);
-			MemoryUtil.memCopy(MemoryUtil.memAddress(tex), pb.get(0), texSize);
-			vkUnmapMemory(device.device, texMemory);
-			
-			STBImage.stbi_image_free(tex);
-			
-			VkImageCreateInfo imageInfo = VkImageCreateInfo.callocStack(stack)
-			.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
-			.imageType(VK10.VK_IMAGE_TYPE_2D)
-			.mipLevels(1)
-			.arrayLayers(1)
-			.format(VK10.VK_FORMAT_R8G8B8A8_UNORM)
-			.tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
-			.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-			.usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT)
-			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-			.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
-			.flags(0);
-			imageInfo.extent().width(width.get(0)).height(height.get(0)).depth(1);
-			
-			if(VK10.vkCreateImage(device.device, imageInfo, null, lb) != VK_SUCCESS)
-				Debug.error("API", "Image failed to create!");
-			texture = lb.get(0);
-			
-			//Memory Requirements
-			VK10.vkGetImageMemoryRequirements(device.device, texture, req);
-			//Prop and Allocate
-			//VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-			//vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-			
-			//int num = pdeviceprop.memoryTypeCount();
-			filter = req.memoryTypeBits();
-			index = -1;
-			for(int i = 0; i < num; i++) {
-				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
-					index = i; break;
-				}
-			}
-			
-			meminfo.allocationSize(req.size())
-			.memoryTypeIndex(index);
-			
-			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-				Debug.error("API", "Allocate Memory failed!");
-			textureMemory = lb.get(0);
-			VK10.vkBindImageMemory(device.device, texture, textureMemory, 0L);
+//			IntBuffer width = stack.mallocInt(1), height = stack.mallocInt(1), channels = stack.mallocInt(1);
+//			ByteBuffer tex = STBImage.stbi_load("./res/textures/mud.png", width, height, channels, STBImage.STBI_rgb_alpha);
+//			int texSize = width.get(0) * height.get(0) * 4;
+//			//System.out.println(tex.limit());
+//			//Create Buffer
+//			VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
+//			.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+//			.size(texSize)
+//			.usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+//			.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+//			
+//			if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Texture Buffer creation failed!");
+//			texBuffer = lb.get(0);
+//			
+//			//Memory Requirements
+//			VkMemoryRequirements req = VkMemoryRequirements.mallocStack(stack);
+//			vkGetBufferMemoryRequirements(device.device, texBuffer, req);
+//			//Prop and Allocate
+//			VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
+//			vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
+//			
+//			int num = pdeviceprop.memoryTypeCount();
+//			int filter = req.memoryTypeBits();
+//			int index = -1;
+//			for(int i = 0; i < num; i++) {
+//				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0) {
+//					index = i; break;
+//				}
+//			}
+//			//System.out.println(index);
+//			VkMemoryAllocateInfo meminfo = VkMemoryAllocateInfo.callocStack(stack)
+//			.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+//			.allocationSize(req.size())
+//			.memoryTypeIndex(index);
+//			
+//			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Allocate Memory failed!");
+//			if(vkBindBufferMemory(device.device, texBuffer, lb.get(0), 0) != VK_SUCCESS)
+//				Debug.error("API", "Bind Buffer Memory failed!");
+//			texMemory = lb.get(0);
+//			
+//			PointerBuffer pb = stack.mallocPointer(1);
+//			vkMapMemory(device.device, texMemory, 0, texSize, 0, pb);
+//			MemoryUtil.memCopy(MemoryUtil.memAddress(tex), pb.get(0), texSize);
+//			vkUnmapMemory(device.device, texMemory);
+//			
+//			STBImage.stbi_image_free(tex);
+//			
+//			VkImageCreateInfo imageInfo = VkImageCreateInfo.callocStack(stack)
+//			.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+//			.imageType(VK10.VK_IMAGE_TYPE_2D)
+//			.mipLevels(1)
+//			.arrayLayers(1)
+//			.format(VK10.VK_FORMAT_R8G8B8A8_UNORM)
+//			.tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
+//			.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
+//			.usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT)
+//			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
+//			.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
+//			.flags(0);
+//			imageInfo.extent().width(width.get(0)).height(height.get(0)).depth(1);
+//			
+//			if(VK10.vkCreateImage(device.device, imageInfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Image failed to create!");
+//			texture = lb.get(0);
+//			
+//			//Memory Requirements
+//			VK10.vkGetImageMemoryRequirements(device.device, texture, req);
+//			//Prop and Allocate
+//			//VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
+//			//vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
+//			
+//			//int num = pdeviceprop.memoryTypeCount();
+//			filter = req.memoryTypeBits();
+//			index = -1;
+//			for(int i = 0; i < num; i++) {
+//				if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
+//					index = i; break;
+//				}
+//			}
+//			
+//			meminfo.allocationSize(req.size())
+//			.memoryTypeIndex(index);
+//			
+//			if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
+//				Debug.error("API", "Allocate Memory failed!");
+//			textureMemory = lb.get(0);
+//			VK10.vkBindImageMemory(device.device, texture, textureMemory, 0L);
 		}
 	}
 	long texBuffer, texMemory, texture, textureMemory;
-	long descriptorPool, descriptorSets;
-	BufferObject vertexBuffer, indexBuffer, uniformBuffer;
+	long descriptorPool, cameraSet, texturesSet, lightSet;
+	BufferObject vertexBuffer, indexBuffer, cameraUniform, texturesUniform, lightUniform;
 	
 	public void recordCommandBuffer() {
+		try(MemoryStack stack = MemoryStack.stackPush()) {
 		commandBuffers = commandPool.createBuffer(framebuffer.length());
 		for(int i = 0; i < commandBuffers.length; i++) {
 			CommandBuffer cb = commandBuffers[i];
@@ -309,10 +316,13 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			cb.bindVertexBuffer(vertexBuffer);
 			cb.bindIndexBuffer(indexBuffer);
 			//cb.draw(3, 1, 0, 0);
-			cb.updateUniforms(pipeline.layout, descriptorSets);
+			cb.bindUniforms(pipeline.layout, stack.longs(cameraSet));//, texturesSet, lightSet));
+			//cb.updateUniforms(pipeline.layout, texturesSet);
+			//cb.updateUniforms(pipeline.layout, lightSet);
 			cb.draw(indices.limit());
 			cb.endRenderPass();
 			cb.end();
+		}
 		}
 	}
 	
@@ -322,34 +332,70 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		renderpass = new Renderpass(device, swapchain);
 		pipeline = new Pipeline(device, swapchain, renderpass, vert, frag);
 		try(MemoryStack stack = MemoryStack.stackPush()) {
-			LongBuffer lb = stack.mallocLong(1);
+			LongBuffer lb = stack.mallocLong(3);
 		VkDescriptorSetAllocateInfo setAllocateInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
 		.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 		.descriptorPool(descriptorPool)
-		.pSetLayouts(stack.longs(pipeline.setLayout));
+		.pSetLayouts(stack.longs(pipeline.cameraLayout));//, pipeline.texturesLayout, pipeline.lightLayout));
 		
-		VK10.vkAllocateDescriptorSets(device.device, setAllocateInfo, lb);
-		descriptorSets = lb.get(0);
+		int result = VK10.vkAllocateDescriptorSets(device.device, setAllocateInfo, lb);
+		if(result != VK_SUCCESS) {
+			Debug.error("API", "Failed to Allocate Descriptor Sets!");
+			System.out.println(result);
+		}
+		cameraSet = lb.get(0);
+		texturesSet = lb.get(1);
+		lightSet = lb.get(2);
 		
-		VkDescriptorBufferInfo.Buffer desBufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
-		.buffer(uniformBuffer.getBuffer())
+		VkDescriptorBufferInfo.Buffer desBufferInfo0 = VkDescriptorBufferInfo.callocStack(1, stack)
+		.buffer(cameraUniform.getBuffer())
+		.offset(0L)
+		.range(VK10.VK_WHOLE_SIZE);
+		VkDescriptorBufferInfo.Buffer desBufferInfo1 = VkDescriptorBufferInfo.callocStack(1, stack)
+		.buffer(texturesUniform.getBuffer())
+		.offset(0L)
+		.range(VK10.VK_WHOLE_SIZE);
+		VkDescriptorBufferInfo.Buffer desBufferInfo2 = VkDescriptorBufferInfo.callocStack(1, stack)
+		.buffer(lightUniform.getBuffer())
 		.offset(0L)
 		.range(VK10.VK_WHOLE_SIZE);
 		
-		VkWriteDescriptorSet.Buffer desWrite = VkWriteDescriptorSet.callocStack(1, stack)
+		VkWriteDescriptorSet.Buffer desWrite = VkWriteDescriptorSet.callocStack(3, stack)
 		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-		.dstSet(descriptorSets)
+		.dstSet(cameraSet)
 		.dstBinding(0)
 		.dstArrayElement(0)
 		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-		.pBufferInfo(desBufferInfo)
+		.pBufferInfo(desBufferInfo0)
+		.pImageInfo(null)
+		.pTexelBufferView(null);
+		desWrite.get(1)
+		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+		.dstSet(cameraSet)
+		.dstBinding(1)
+		.dstArrayElement(0)
+		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+		.pBufferInfo(desBufferInfo1)
+		.pImageInfo(null)
+		.pTexelBufferView(null);
+		desWrite.get(2)
+		.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+		.dstSet(cameraSet)
+		.dstBinding(2)
+		.dstArrayElement(0)
+		.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+		.pBufferInfo(desBufferInfo2)
 		.pImageInfo(null)
 		.pTexelBufferView(null);
 		
 		VK10.vkUpdateDescriptorSets(device.device, desWrite, null);
-		}
+		
+		
+		
+		
 		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass);
 		recordCommandBuffer();
+		}
 	}
 	
 	public void createSwapchain(IntBuffer width, IntBuffer height) {
@@ -443,13 +489,41 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			//System.out.println(Matrix4f.ALIGNOF);
 			
 			PointerBuffer pb = stack.mallocPointer(1);
-			result = vkMapMemory(device.device, uniformBuffer.getMemory(), 0, size, 0, pb);
+			result = vkMapMemory(device.device, cameraUniform.getMemory(), 0, size, 0, pb);
 			if(result != VK_SUCCESS)
 				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
 			
 			//MemoryUtil.memCopy(camera.address(), pb.get(0), size);
 			HotSwap.matrixUpload(pb.get(0), size, cameraRot);
-			vkUnmapMemory(device.device, uniformBuffer.getMemory());
+			vkUnmapMemory(device.device, cameraUniform.getMemory());
+			size = 4 * 4 * 4;
+			result = vkMapMemory(device.device, texturesUniform.getMemory(), 0, size, 0, pb);
+			if(result != VK_SUCCESS)
+				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
+			
+			FloatBuffer fb = stack.mallocFloat(4 * 4);
+			fb.put(0).put(1).put(0).put(1);
+			fb.put(0).put(0).put(0).put(0);
+			fb.put(0).put(0).put(0).put(0);
+			fb.put(0).put(0).put(0).put(0);
+			fb.flip();
+			MemoryUtil.memCopy(MemoryUtil.memAddress(fb), pb.get(0), size);
+			vkUnmapMemory(device.device, texturesUniform.getMemory());
+			
+			size = 4 * 2 * 4;
+			result = vkMapMemory(device.device, lightUniform.getMemory(), 0, size, 0, pb);
+			if(result != VK_SUCCESS)
+				Debug.error("API", "Realtime Memory Map failed! Error Code: " + result);
+			
+			fb = stack.mallocFloat(4 * 2);
+			fb.put(0).put(0).put(0).put(0);
+			fb.put(0).put(0).put(0).put(0);
+			fb.flip();
+			MemoryUtil.memCopy(MemoryUtil.memAddress(fb), pb.get(0), size);
+			vkUnmapMemory(device.device, lightUniform.getMemory());
+			
+			device.waitIdle();
+			
 			
 			device.waitIdle();
 			

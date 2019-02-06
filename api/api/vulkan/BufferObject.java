@@ -71,7 +71,8 @@ public class BufferObject {
 			FloatBuffer fb = stack.mallocFloat(size>>2);
 			for(Vertex v : vertices) {
 				fb.put(v.pos.x()); fb.put(v.pos.y()); fb.put(v.pos.z());
-				fb.put(v.color.x()); fb.put(v.color.y()); fb.put(v.color.z());
+				fb.put(v.normal.x()); fb.put(v.normal.y()); fb.put(v.normal.z());
+				fb.put(v.texCoord.x()); fb.put(v.texCoord.y());
 			}
 			fb.flip();
 			load(queue, pool, MemoryUtil.memAddress(fb), size);
@@ -148,6 +149,10 @@ public class BufferObject {
 	
 	public void unmap() {vkUnmapMemory(device, memory);}
 	private void unmap(long memory) {vkUnmapMemory(device, memory);}
+	
+	public void map(Buffer data) {
+		
+	}
 	
 	public void destroy() {
 		vkDestroyBuffer(device, buffer, null);

@@ -70,10 +70,14 @@ public class CommandBuffer extends VkCommandBuffer {
 		VK10.vkCmdBindIndexBuffer(this, ib.getBuffer(), 0L, VK10.VK_INDEX_TYPE_UINT32);
 	}
 	
-	public void updateUniforms(long pipelineLayout, long descriptorSet) {
+	public void bindUniforms(long pipelineLayout, long descriptorSet) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			vkCmdBindDescriptorSets(this, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, stack.longs(descriptorSet), null);
 		}
+	}
+	
+	public void bindUniforms(long pipelineLayout, LongBuffer descriptorSets) {
+		vkCmdBindDescriptorSets(this, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, descriptorSets, null);
 	}
 	
 	public void draw(int vertexCount, int instanceCount, int firstVertex, int firstInstance) 
