@@ -659,21 +659,21 @@ public class Matrix4f extends Struct implements NativeResource {
 	
 	//~~~~~~~~~~~MISC~~~~~~~~~~~\\
 	
-	public Vector4f transform(Vector4f v) {return transform(v, v);}
-	public Vector4f transform(Vector4f v, Vector4f out) {
-		float x = v.x(), y = v.y(), z = v.z(), w = v.w();
-		
-		float m00 = m00(), m01 = m01(), m02 = m02(), m03 = m03();
-		float m10 = m10(), m11 = m11(), m12 = m12(), m13 = m13();
-		float m20 = m20(), m21 = m21(), m22 = m22(), m23 = m23();
-		float m30 = m30(), m31 = m31(), m32 = m32(), m33 = m33();
-		
-		float nx = m00 * x + m01 * y + m02 * z + m03 * w;
-		float ny = m10 * x + m11 * y + m12 * z + m13 * w;
-		float nz = m20 * x + m21 * y + m22 * z + m23 * w;
-		float nw = m30 * x + m31 * y + m32 * z + m33 * w;
-		return out.xyzw(nx, ny, nz, nw);
-	}
+//	public Vector4f transform(Vector4f v) {return transform(v, v);}
+//	public Vector4f transform(Vector4f v, Vector4f out) {
+//		float x = v.x(), y = v.y(), z = v.z(), w = v.w();
+//		
+//		float m00 = m00(), m01 = m01(), m02 = m02(), m03 = m03();
+//		float m10 = m10(), m11 = m11(), m12 = m12(), m13 = m13();
+//		float m20 = m20(), m21 = m21(), m22 = m22(), m23 = m23();
+//		float m30 = m30(), m31 = m31(), m32 = m32(), m33 = m33();
+//		
+//		float nx = m00 * x + m01 * y + m02 * z + m03 * w;
+//		float ny = m10 * x + m11 * y + m12 * z + m13 * w;
+//		float nz = m20 * x + m21 * y + m22 * z + m23 * w;
+//		float nw = m30 * x + m31 * y + m32 * z + m33 * w;
+//		return out.xyzw(nx, ny, nz, nw);
+//	}
 	
 	public String toString() {
 		return 	m00() + ", " + m01() + ", " + m02() + ", " + m03() + "\n" + 

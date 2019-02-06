@@ -6,6 +6,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -150,8 +151,15 @@ public class BufferObject {
 	public void unmap() {vkUnmapMemory(device, memory);}
 	private void unmap(long memory) {vkUnmapMemory(device, memory);}
 	
-	public void map(Buffer data) {
-		
+	public void map(java.nio.Buffer data) {
+		int size = data.limit();
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			PointerBuffer pb = stack.mallocPointer(1);
+			if(vkMapMemory(device, memory, 0, size, 0, pb) != VK_SUCCESS)
+				Debug.error("API", "Memory Map failed!");
+			MemoryUtil.memCopy(MemoryUtil.memAddress(data), pb.get(0), size);
+			vkUnmapMemory(device, memory);
+		}
 	}
 	
 	public void destroy() {
