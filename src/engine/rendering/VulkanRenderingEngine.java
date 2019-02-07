@@ -164,7 +164,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	public void createVertexBuffer() {
 		int vdiv = 20; int hdiv = 20;
-		vertices = Sphere.generateSphereVertices(1, vdiv, hdiv);
+		vertices = Sphere.generateSphereVertices(0.5f, vdiv, hdiv);
 		indices = Sphere.generateSphereIndices(vdiv, hdiv);
 		
 		vertexBuffer = new BufferObject(physicalDevice, device);
@@ -196,34 +196,80 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		modelBuffer = new BufferObject[96];
 		texturesBuffer = new BufferObject[96];
 		
-		float cube = 3f;
+		float cube = 1f;
 		float cubeHalf = cube / 2f;
+		float face = 2f * cube;
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			Matrix4f.Buffer model = Matrix4f.mallocStack(96, stack);
 			Matrix4f.Buffer texture = Matrix4f.mallocStack(96, stack);
 			for(int i = 0; i < 96; i++) model.get(i).identity();
 			
-//			float x, y, z;
-//			x = y = z = -2 * cube;
-//			for(int i = 0; i < 4; i++) {
-//				for(int j = 0; j < 4; j++) {
-//					model.get(i * 4 + j).translation(x + (1 + j) * cubeHalf, y + (1 + i) * cubeHalf, z);
-//					if(i == 0) texture.get(i * 4 + j).m10((1+j) * 0.3f);
-//					if(i == 1) texture.get(i * 4 + j).m11((1+j) * 0.3f);
-//					if(i == 2) texture.get(i * 4 + j).m12((1+j) * 0.3f);
-//					if(i == 3) texture.get(i * 4 + j).m13((1+j) * 0.3f);
-//				}
-//			}
+			//FRONT FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(i * 4 + j).translation((j - 2) * cube + cubeHalf, (i - 2) * cube + cubeHalf, face);
+					//texture.get(i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
+			//RIGHT FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(16 + i * 4 + j).translation(face, (i - 2) * cube + cubeHalf, (j - 2) * cube + cubeHalf);
+					//texture.get(16 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
+			//BACK FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(32 + i * 4 + j).translation((1 - j) * cube + cubeHalf, (i - 2) * cube + cubeHalf, -face);
+					//texture.get(32 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
+			//LEFT FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(48 + i * 4 + j).translation(-face, (i - 2) * cube + cubeHalf, (1 - j) * cube + cubeHalf);
+					//texture.get(48 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
+			//BOTTOM FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(64 + i * 4 + j).translation((j - 2) * cube + cubeHalf, -face, (i - 2) * cube + cubeHalf);
+					//texture.get(64 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
+			//TOP FACE
+			for(int i = 0; i < 4; i++) {
+				for(int j = 0; j < 4; j++) {
+					model.get(80 + i * 4 + j).translation((j - 2) * cube + cubeHalf, face, (i - 2) * cube + cubeHalf);
+					//texture.get(80 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+				}
+			}
 			
 			
-			model.get(0).translation(3, 0, 0);
-			model.get(1).translation(0, 0, 0);
+			texture.get(0).m00(0.25f).m03(1.0f); //Red
+			texture.get(1).m01(0.25f).m03(1.0f); //Green
+			texture.get(2).m01(0.25f).m02(0.25f).m03(1.0f); //Green
+			texture.get(3).m02(0.25f).m03(1.0f); //Green
 			
-			texture.get(0).m00(1.0f).m03(1.0f); //Red
-			texture.get(1).m01(1.0f).m03(1.0f); //Green
+			texture.get(4).m00(0.5f).m03(1.0f); //Red
+			texture.get(5).m01(0.5f).m03(1.0f); //Green
+			texture.get(6).m01(0.5f).m02(0.5f).m03(1.0f); //Green
+			texture.get(7).m02(0.5f).m03(1.0f); //Green
 			
-			for(int i = 0; i < 2; i++) {
+			texture.get(8).m00(0.75f).m03(1.0f); //Red
+			texture.get(9).m01(0.75f).m03(1.0f); //Green
+			texture.get(10).m01(0.75f).m02(0.75f).m03(1.0f); //Green
+			texture.get(11).m02(0.75f).m03(1.0f); //Green
+			
+			texture.get(12).m00(1.0f).m03(1.0f); //Red
+			texture.get(13).m01(1.0f).m03(1.0f); //Green
+			texture.get(14).m01(1.0f).m02(1.0f).m03(1.0f); //Green
+			texture.get(15).m02(1.0f).m03(1.0f); //Green
+			
+			for(int i = 0; i < 96; i++) {
 				modelBuffer[i] = new BufferObject(physicalDevice, device);
 				modelBuffer[i].createUniformBuffer(16 * 4);
 				texturesBuffer[i] = new BufferObject(physicalDevice, device);
