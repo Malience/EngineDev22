@@ -33,18 +33,22 @@ public class SPIRV {
 			Process p = new ProcessBuilder(String.format(FORMAT, dst, src)).inheritIO().start();
 			p.waitFor();
 			p.destroy();
-			FileInputStream fis = new FileInputStream(dst);
-			FileChannel fc = fis.getChannel();
-			code = fc.map(MapMode.READ_ONLY, 0, fis.available());
-			fc.close();
-			fis.close();
-			new File(dst).delete();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+		try {
+			FileInputStream fis = new FileInputStream(dst);
+			FileChannel fc = fis.getChannel();
+			code = fc.map(MapMode.READ_ONLY, 0, fis.available());
+			fc.close();
+			fis.close();
+			new File(dst).delete();
+		} catch(Exception e) {
+			
 		}
 		return code;
 	}

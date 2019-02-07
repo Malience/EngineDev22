@@ -8,7 +8,6 @@ import static org.lwjgl.system.MemoryUtil.nmemCallocChecked;
 
 import java.nio.ByteBuffer;
 
-import org.eclipse.jdt.annotation.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -387,7 +386,7 @@ public class Matrix3f extends Struct implements NativeResource {
         M20 = layout.offsetof(6); M21 = layout.offsetof(7); M22 = layout.offsetof(8);
     }
 	
-	Matrix3f(long address, @Nullable ByteBuffer container) { super(address, container); }
+	Matrix3f(long address, ByteBuffer container) { super(address, container); }
 	
     public Matrix3f(ByteBuffer container) {
         this(memAddress(container), __checkContainer(container, SIZEOF));
@@ -400,13 +399,12 @@ public class Matrix3f extends Struct implements NativeResource {
     public static Matrix3f calloc() {return create(nmemCallocChecked(1, SIZEOF));}
     public static Matrix3f create() {return new Matrix3f(BufferUtils.createByteBuffer(SIZEOF));}
     public static Matrix3f create(long address) {return new Matrix3f(address, null);}
-    @Nullable
     public static Matrix3f createSafe(long address) {return address == NULL ? null : create(address);}
     public static Matrix3f.Buffer malloc(int capacity) {return create(__checkMalloc(capacity, SIZEOF), capacity);}
     public static Matrix3f.Buffer calloc(int capacity) {return create(nmemCallocChecked(capacity, SIZEOF), capacity);}
     public static Buffer create(int capacity) {return new Buffer(__create(capacity, SIZEOF));}
     public static Buffer create(long address, int capacity) {return new Buffer(address, capacity);}
-    public static @Nullable Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
+    public static Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
     public static Matrix3f mallocStack() {return mallocStack(stackGet());}
     public static Matrix3f callocStack() {return callocStack(stackGet());}
     public static Matrix3f mallocStack(MemoryStack stack) {return create(stack.nmalloc(ALIGNOF, SIZEOF));}
@@ -436,7 +434,7 @@ public class Matrix3f extends Struct implements NativeResource {
 
         public Buffer(ByteBuffer container) {super(container, container.remaining() / SIZEOF);}
         public Buffer(long address, int cap) {super(address, null, -1, 0, cap, cap);}
-        Buffer(long address, @Nullable ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
+        Buffer(long address, ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
         @Override
         protected Buffer self() {return this;}
         @Override

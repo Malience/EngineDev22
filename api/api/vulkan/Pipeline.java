@@ -1,16 +1,31 @@
 package api.vulkan;
 
-import static org.lwjgl.vulkan.VK10.*;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_A_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_B_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_G_BIT;
+import static org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_R_BIT;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+import static org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.vkCreatePipelineLayout;
 
 import java.nio.LongBuffer;
 
-import org.eclipse.jdt.annotation.Nullable;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
-import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding;
-import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo;
 import org.lwjgl.vulkan.VkDevice;
 import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
@@ -27,8 +42,6 @@ import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo;
 import org.lwjgl.vulkan.VkRect2D;
 import org.lwjgl.vulkan.VkViewport;
 
-import engine.debug.Debug;
-
 public class Pipeline {
 	public static final int 
 		POINT_LIST = VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -42,7 +55,7 @@ public class Pipeline {
 	public long pipeline;
 	public VkExtent2D extent;
 	public long layout;
-	public Pipeline(Device device, Swapchain swapchain, Renderpass renderpass, @Nullable DescriptorLayout desLayout, Shader... shaders) {
+	public Pipeline(Device device, Swapchain swapchain, Renderpass renderpass, DescriptorLayout desLayout, Shader... shaders) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			this.device = device.device;
 			LongBuffer lb = stack.mallocLong(1);

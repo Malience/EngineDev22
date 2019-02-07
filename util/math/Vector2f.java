@@ -11,7 +11,6 @@ import static org.lwjgl.system.MemoryUtil.nmemCallocChecked;
 
 import java.nio.ByteBuffer;
 
-import org.eclipse.jdt.annotation.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.NativeResource;
@@ -102,7 +101,7 @@ public class Vector2f extends Struct implements NativeResource {
         Y = layout.offsetof(1);
     }
 
-    Vector2f(long address, @Nullable ByteBuffer container) {super(address, container);}
+    Vector2f(long address, ByteBuffer container) {super(address, container);}
 
     public Vector2f(ByteBuffer container) {
         this(memAddress(container), __checkContainer(container, SIZEOF));
@@ -123,13 +122,12 @@ public class Vector2f extends Struct implements NativeResource {
     public static Vector2f calloc() {return create(nmemCallocChecked(1, SIZEOF));}
     public static Vector2f create() {return new Vector2f(BufferUtils.createByteBuffer(SIZEOF));}
     public static Vector2f create(long address) {return new Vector2f(address, null);}
-    @Nullable
     public static Vector2f createSafe(long address) {return address == NULL ? null : create(address);}
     public static Vector2f.Buffer malloc(int capacity) {return create(__checkMalloc(capacity, SIZEOF), capacity);}
     public static Vector2f.Buffer calloc(int capacity) {return create(nmemCallocChecked(capacity, SIZEOF), capacity);}
     public static Vector2f.Buffer create(int capacity) {return new Buffer(__create(capacity, SIZEOF));}
     public static Vector2f.Buffer create(long address, int capacity) {return new Buffer(address, capacity);}
-    public static Vector2f.@Nullable Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
+    public static Vector2f.Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
     public static Vector2f mallocStack() {return mallocStack(stackGet());}
     public static Vector2f callocStack() {return callocStack(stackGet());}
     public static Vector2f mallocStack(MemoryStack stack) {return create(stack.nmalloc(ALIGNOF, SIZEOF));}
@@ -149,7 +147,7 @@ public class Vector2f extends Struct implements NativeResource {
     	private static final Vector2f ELEMENT_FACTORY = Vector2f.create(-1L);
         public Buffer(ByteBuffer container) {super(container, container.remaining() / SIZEOF);}
         public Buffer(long address, int cap) {super(address, null, -1, 0, cap, cap);}
-        Buffer(long address, @Nullable ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
+        Buffer(long address, ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
 
         @Override
         protected Buffer self() {return this;}

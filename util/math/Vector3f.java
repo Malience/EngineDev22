@@ -11,7 +11,6 @@ import static org.lwjgl.system.MemoryUtil.nmemCallocChecked;
 
 import java.nio.ByteBuffer;
 
-import org.eclipse.jdt.annotation.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.NativeResource;
@@ -260,7 +259,7 @@ public class Vector3f extends Struct implements NativeResource {
         Z = layout.offsetof(2);
     }
 
-    Vector3f(long address, @Nullable ByteBuffer container) {super(address, container);}
+    Vector3f(long address, ByteBuffer container) {super(address, container);}
     public Vector3f(ByteBuffer container) {
         this(memAddress(container), __checkContainer(container, SIZEOF));
     }
@@ -289,7 +288,7 @@ public class Vector3f extends Struct implements NativeResource {
     public static Vector3f.Buffer calloc(int capacity) {return create(nmemCallocChecked(capacity, SIZEOF), capacity);}
     public static Vector3f.Buffer create(int capacity) {return new Buffer(__create(capacity, SIZEOF));}
     public static Vector3f.Buffer create(long address, int capacity) {return new Buffer(address, capacity);}
-    public static Vector3f.@Nullable Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
+    public static Vector3f.Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
     //Stack Allocation
     public static Vector3f mallocStack() {return mallocStack(stackGet());}
     public static Vector3f callocStack() {return callocStack(stackGet());}
@@ -314,7 +313,7 @@ public class Vector3f extends Struct implements NativeResource {
     	
         public Buffer(ByteBuffer container) {super(container, container.remaining() / SIZEOF);}
         public Buffer(long address, int cap) {super(address, null, -1, 0, cap, cap);}
-        Buffer(long address, @Nullable ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
+        Buffer(long address, ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
 
         @Override
         protected Buffer self() {return this;}

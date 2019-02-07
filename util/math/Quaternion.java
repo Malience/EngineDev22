@@ -11,7 +11,6 @@ import static org.lwjgl.system.MemoryUtil.nmemCallocChecked;
 
 import java.nio.ByteBuffer;
 
-import org.eclipse.jdt.annotation.Nullable;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.NativeResource;
@@ -137,7 +136,7 @@ public class Quaternion extends Struct implements NativeResource {
         W = layout.offsetof(3);
     }
 
-    Quaternion(long address, @Nullable ByteBuffer container) {super(address, container);}
+    Quaternion(long address, ByteBuffer container) {super(address, container);}
 
     /**
      * Creates a {@link Vector3f} instance at the current position of the specified {@link ByteBuffer} container. Changes to the buffer's content will be
@@ -170,13 +169,12 @@ public class Quaternion extends Struct implements NativeResource {
     public static Quaternion calloc() {return create(nmemCallocChecked(1, SIZEOF));}
     public static Quaternion create() {return new Quaternion(BufferUtils.createByteBuffer(SIZEOF));}
     public static Quaternion create(long address) {return new Quaternion(address, null);}
-    @Nullable
     public static Quaternion createSafe(long address) {return address == NULL ? null : create(address);}
     public static Quaternion.Buffer malloc(int capacity) {return create(__checkMalloc(capacity, SIZEOF), capacity);}
     public static Quaternion.Buffer calloc(int capacity) {return create(nmemCallocChecked(capacity, SIZEOF), capacity);}
     public static Quaternion.Buffer create(int capacity) {return new Buffer(__create(capacity, SIZEOF));}
     public static Quaternion.Buffer create(long address, int capacity) {return new Buffer(address, capacity);}
-    public static Quaternion.@Nullable Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
+    public static Quaternion.Buffer createSafe(long address, int capacity) {return address == NULL ? null : create(address, capacity);}
     public static Quaternion mallocStack() {return mallocStack(stackGet());}
     public static Quaternion callocStack() {return callocStack(stackGet());}
     public static Quaternion mallocStack(MemoryStack stack) {return create(stack.nmalloc(ALIGNOF, SIZEOF));}
@@ -199,7 +197,7 @@ public class Quaternion extends Struct implements NativeResource {
     public static class Buffer extends StructBuffer<Quaternion, Buffer> implements NativeResource {
         public Buffer(ByteBuffer container) {super(container, container.remaining() / SIZEOF);}
         public Buffer(long address, int cap) {super(address, null, -1, 0, cap, cap);}
-        Buffer(long address, @Nullable ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
+        Buffer(long address, ByteBuffer container, int mark, int pos, int lim, int cap) {super(address, container, mark, pos, lim, cap);}
 
         @Override
         protected Buffer self() {return this;}

@@ -13,7 +13,7 @@ public abstract class Vulkan {
 	public static Instance createInstance(String applicationName, ArrayList<String> layers, ArrayList<String> extensions) {
 		if(instance != null) return instance;
 		instance = new Instance(applicationName, layers, extensions);
-		try{messenger = new Messenger(instance);}catch(Exception e) {e.printStackTrace();}
+		//try{messenger = new Messenger(instance);}catch(Exception e) {e.printStackTrace();}
 		return instance;
 	}
 	

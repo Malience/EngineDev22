@@ -33,12 +33,12 @@ public class Instance {
             .pApplicationInfo(appinfo);
 			
 			//Layers
-			layers.add("VK_LAYER_LUNARG_standard_validation");
+			//layers.add("VK_LAYER_LUNARG_standard_validation");
 			createinfo.ppEnabledLayerNames(Memory.stackPointers(stack, layers));
 			
 			//Extensions
 			Memory.add(extensions, GLFWVulkan.glfwGetRequiredInstanceExtensions());
-			extensions.add(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			//extensions.add(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			createinfo.ppEnabledExtensionNames(Memory.stackPointers(stack, extensions));
 			
 			PointerBuffer inst = stack.mallocPointer(1);
