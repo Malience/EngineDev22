@@ -16,6 +16,7 @@ import org.lwjgl.vulkan.VkExtent2D;
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo;
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState;
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo;
+import org.lwjgl.vulkan.VkPipelineDepthStencilStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo;
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo;
 import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo;
@@ -45,6 +46,16 @@ public class Pipeline {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			this.device = device.device;
 			LongBuffer lb = stack.mallocLong(1);
+			
+			VkPipelineDepthStencilStateCreateInfo depthInfo = VkPipelineDepthStencilStateCreateInfo.callocStack(stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+			.depthTestEnable(true)
+			.depthWriteEnable(true)
+			.depthCompareOp(VK10.VK_COMPARE_OP_LESS)
+			.depthBoundsTestEnable(false)
+			.minDepthBounds(0.0f)
+			.maxDepthBounds(1.0f)
+			.stencilTestEnable(false);
 			
 			VkPipelineShaderStageCreateInfo.Buffer stages = VkPipelineShaderStageCreateInfo.callocStack(2, stack);
 			stages.get(0).sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
@@ -122,6 +133,7 @@ public class Pipeline {
 			.pRasterizationState(rasterizer)
 			.pMultisampleState(multisampling)
 			.pColorBlendState(colorBlending)
+			//.pDepthStencilState(depthInfo)
 			.layout((layout = lb.get(0)))
 			.renderPass(renderpass.renderpass)
 			.subpass(0);

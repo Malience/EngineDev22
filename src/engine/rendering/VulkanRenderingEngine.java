@@ -22,6 +22,7 @@ import static org.lwjgl.vulkan.VK10.vkMapMemory;
 import static org.lwjgl.vulkan.VK10.vkUnmapMemory;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
@@ -58,6 +59,7 @@ import api.vulkan.DescriptorSet;
 import api.vulkan.Device;
 import api.vulkan.Framebuffer;
 import api.vulkan.HotSwap;
+import api.vulkan.Image;
 import api.vulkan.Imageview;
 import api.vulkan.Instance;
 import api.vulkan.PhysicalDevice;
@@ -144,7 +146,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	Vertex[] vertices;
 	IntBuffer indices;
-	Quaternion cameraRot = new Quaternion();
+	Quaternion rot = new Quaternion();
 	float x, y;
 	static Matrix4f.Buffer viewProjection;
 	static Matrix4f view, projection;
@@ -186,28 +188,6 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		view.identity();
 		view.translation(0, 0, -12f);
 		viewProjectionBuffer.map(viewProjection);
-		Quaternion q = new Quaternion();
-		InputAPI.setKeyCallback(window.getHandle(), (int button, int action, int mods) -> {
-			//if(action != InputAPI.HOLD && action != InputAPI.PRESS) return;
-			float rotSpeed = 100;
-			if(button == InputAPI.KEY_W) {
-				y += rotSpeed * Time.getDelta();
-				if(y > 89f) y = 89f;
-			} else if(button == InputAPI.KEY_S) {
-				y -= rotSpeed * Time.getDelta();
-				if(y < -89f) y = -89f;
-			} else if(button == InputAPI.KEY_A) {
-				x += rotSpeed * Time.getDelta();
-				if(x > 360f) x -= 360f;
-			} else if(button == InputAPI.KEY_D) {
-				x -= rotSpeed * Time.getDelta();
-				if(x < 0f) x += 360f;
-			}
-			cameraRot.axisAngle(0, 1, 0, x * Constants.RADIAN).mul(q.axisAngle(1, 0, 0, y * Constants.RADIAN));
-			view.setRotation(q);
-			view.translation(0, 0, -12f);
-			viewProjectionBuffer.map(viewProjection);
-		});
 		
 		desLayout = new DescriptorLayout(device, 2, 2);
 		desPool = new DescriptorPool(device, 96);
@@ -216,10 +196,26 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		modelBuffer = new BufferObject[96];
 		texturesBuffer = new BufferObject[96];
 		
+		float cube = 3f;
+		float cubeHalf = cube / 2f;
+		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			Matrix4f.Buffer model = Matrix4f.mallocStack(96, stack);
 			Matrix4f.Buffer texture = Matrix4f.mallocStack(96, stack);
 			for(int i = 0; i < 96; i++) model.get(i).identity();
+			
+//			float x, y, z;
+//			x = y = z = -2 * cube;
+//			for(int i = 0; i < 4; i++) {
+//				for(int j = 0; j < 4; j++) {
+//					model.get(i * 4 + j).translation(x + (1 + j) * cubeHalf, y + (1 + i) * cubeHalf, z);
+//					if(i == 0) texture.get(i * 4 + j).m10((1+j) * 0.3f);
+//					if(i == 1) texture.get(i * 4 + j).m11((1+j) * 0.3f);
+//					if(i == 2) texture.get(i * 4 + j).m12((1+j) * 0.3f);
+//					if(i == 3) texture.get(i * 4 + j).m13((1+j) * 0.3f);
+//				}
+//			}
+			
 			
 			model.get(0).translation(3, 0, 0);
 			model.get(1).translation(0, 0, 0);
@@ -244,10 +240,28 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			}
 		
 		}
-		Vector4f.Buffer v2 = Vector4f.calloc(2);
+		lightPos.set(0, 0, -12f);
+		view.transform(lightPos);
+		projection.transform(lightPos);
+		v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
+		v2.get(1).set(1, 1, 1, 1);
+		v2.get(2).set(0, 0, -12, 1);
 		lightBuffer.map(v2);
+//		int format = Image.findFormat(physicalDevice, 
+//				VK10.VK_IMAGE_TILING_OPTIMAL, VK10.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+//				VK10.VK_FORMAT_D16_UNORM, VK10.VK_FORMAT_D32_SFLOAT, VK10.VK_FORMAT_D32_SFLOAT_S8_UINT, VK10.VK_FORMAT_D24_UNORM_S8_UINT);
+//		//int format = VK10.VK_FORMAT_D32_SFLOAT;
+//		System.out.println(format);
+//		image = Image.createImage(physicalDevice, device, 800, 600, format);
+//		//Image.transition(commandPool.createBuffer(), graphicsQueue, image, format, VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+//		imageMemory = Image.allocateImage(physicalDevice, device, image, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+//		imageView = Image.createImageView(device, image, format);
+		
 	}
-	long texBuffer, texMemory, texture, textureMemory;
+	Vector4f.Buffer v2 = Vector4f.calloc(3);
+	Vector3f lightPos = new Vector3f();
+	Matrix4f lightMatrix = new Matrix4f();
+	long image, imageMemory, imageView;
 	
 	public void recordCommandBuffer() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
@@ -275,7 +289,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
 		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
-		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass);
+		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass, imageView);
 		recordCommandBuffer();
 	}
 	
@@ -284,7 +298,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
 		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
-		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass);
+		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass, imageView);
 		recordCommandBuffer();
 	}
 	
@@ -314,10 +328,73 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	private static int currentFrame = 0;
 	private static boolean framebufferResized = false;
 	QueueSubmitInfo info = new QueueSubmitInfo();
+	boolean held = false;
+	float origx, origy;
+	float rotx, roty;
+	float lightrotx, lightroty;
 	@Override
 	public void run() {
-		InputAPI.pollEvents();
 		try(MemoryStack stack = MemoryStack.stackPush()) {
+			InputAPI.pollEvents();
+			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_PRESS) {
+				DoubleBuffer x = stack.mallocDouble(1), y = stack.mallocDouble(1);
+				GLFW.glfwGetCursorPos(window.getHandle(), x, y);
+				GLFW.glfwSetCursorPos(window.getHandle(), 0, 0);
+				if(!held) {
+					GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_HIDDEN);
+					origx = (float)x.get(0); origy = (float)y.get(0);
+					held = true;
+				} else {
+					Quaternion q = new Quaternion();
+					float rotSpeed = 5;
+					rotx += ((float) x.get(0)) * rotSpeed * Time.getDelta();
+					roty += ((float) y.get(0)) * rotSpeed * Time.getDelta();
+					if(roty > 89) roty = 89;
+					if(roty < -89) roty = -89;
+					rot.axisAngle(0, 1, 0, rotx * Constants.RADIAN).mul(q.axisAngle(0, 0, 1, roty * Constants.RADIAN), rot);
+					view.setRotation(rot);
+					view.translation(0, 0, -12f);
+					viewProjectionBuffer.map(viewProjection);
+					Vector3f v = new Vector3f();
+					view.transform(v);
+					projection.transform(v);
+					v2.get(2).x(v.x()).y(v.y()).z(v.z());
+					lightBuffer.map(v2);
+				}
+			}
+			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_RELEASE && held) {
+				GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+				GLFW.glfwSetCursorPos(window.getHandle(), origx, origy);
+				held = false;
+			}
+			float rotSpeed = 100;
+			boolean lightMoved = false;
+			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightrotx += rotSpeed * Time.getDelta();
+			}
+			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_L) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightrotx -= rotSpeed * Time.getDelta();
+			}
+			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightroty += rotSpeed * Time.getDelta();
+			}
+			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_K) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightroty -= rotSpeed * Time.getDelta();
+			}
+			if(lightMoved) {
+				lightPos.set(0, 0, -12f);
+				Quaternion q = new Quaternion();
+				rot.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN).mul(q.axisAngle(0, 0, 1, lightroty * Constants.RADIAN), rot);
+				rot.transform(lightPos);
+				view.transform(lightPos);
+				projection.transform(lightPos);
+				v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
+				lightBuffer.map(v2);
+			}
 			IntBuffer ib = stack.mallocInt(1);
 			
 			long imageAvailableSemaphore = this.imageAvailableSemaphore[currentFrame];
@@ -376,93 +453,4 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		super.dispose();
 	}
 	
-//	IntBuffer width = stack.mallocInt(1), height = stack.mallocInt(1), channels = stack.mallocInt(1);
-//	ByteBuffer tex = STBImage.stbi_load("./res/textures/mud.png", width, height, channels, STBImage.STBI_rgb_alpha);
-//	int texSize = width.get(0) * height.get(0) * 4;
-//	//System.out.println(tex.limit());
-//	//Create Buffer
-//	VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
-//	.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-//	.size(texSize)
-//	.usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-//	.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
-//	
-//	if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
-//		Debug.error("API", "Texture Buffer creation failed!");
-//	texBuffer = lb.get(0);
-//	
-//	//Memory Requirements
-//	VkMemoryRequirements req = VkMemoryRequirements.mallocStack(stack);
-//	vkGetBufferMemoryRequirements(device.device, texBuffer, req);
-//	//Prop and Allocate
-//	VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-//	vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-//	
-//	int num = pdeviceprop.memoryTypeCount();
-//	int filter = req.memoryTypeBits();
-//	int index = -1;
-//	for(int i = 0; i < num; i++) {
-//		if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) != 0) {
-//			index = i; break;
-//		}
-//	}
-//	//System.out.println(index);
-//	VkMemoryAllocateInfo meminfo = VkMemoryAllocateInfo.callocStack(stack)
-//	.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-//	.allocationSize(req.size())
-//	.memoryTypeIndex(index);
-//	
-//	if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-//		Debug.error("API", "Allocate Memory failed!");
-//	if(vkBindBufferMemory(device.device, texBuffer, lb.get(0), 0) != VK_SUCCESS)
-//		Debug.error("API", "Bind Buffer Memory failed!");
-//	texMemory = lb.get(0);
-//	
-//	PointerBuffer pb = stack.mallocPointer(1);
-//	vkMapMemory(device.device, texMemory, 0, texSize, 0, pb);
-//	MemoryUtil.memCopy(MemoryUtil.memAddress(tex), pb.get(0), texSize);
-//	vkUnmapMemory(device.device, texMemory);
-//	
-//	STBImage.stbi_image_free(tex);
-//	
-//	VkImageCreateInfo imageInfo = VkImageCreateInfo.callocStack(stack)
-//	.sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
-//	.imageType(VK10.VK_IMAGE_TYPE_2D)
-//	.mipLevels(1)
-//	.arrayLayers(1)
-//	.format(VK10.VK_FORMAT_R8G8B8A8_UNORM)
-//	.tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
-//	.initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
-//	.usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK10.VK_IMAGE_USAGE_SAMPLED_BIT)
-//	.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-//	.samples(VK10.VK_SAMPLE_COUNT_1_BIT)
-//	.flags(0);
-//	imageInfo.extent().width(width.get(0)).height(height.get(0)).depth(1);
-//	
-//	if(VK10.vkCreateImage(device.device, imageInfo, null, lb) != VK_SUCCESS)
-//		Debug.error("API", "Image failed to create!");
-//	texture = lb.get(0);
-//	
-//	//Memory Requirements
-//	VK10.vkGetImageMemoryRequirements(device.device, texture, req);
-//	//Prop and Allocate
-//	//VkPhysicalDeviceMemoryProperties pdeviceprop = VkPhysicalDeviceMemoryProperties.mallocStack(stack);
-//	//vkGetPhysicalDeviceMemoryProperties(physicalDevice.device, pdeviceprop);
-//	
-//	//int num = pdeviceprop.memoryTypeCount();
-//	filter = req.memoryTypeBits();
-//	index = -1;
-//	for(int i = 0; i < num; i++) {
-//		if((filter & (1 << i)) != 0 && (pdeviceprop.memoryTypes(i).propertyFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
-//			index = i; break;
-//		}
-//	}
-//	
-//	meminfo.allocationSize(req.size())
-//	.memoryTypeIndex(index);
-//	
-//	if(vkAllocateMemory(device.device, meminfo, null, lb) != VK_SUCCESS)
-//		Debug.error("API", "Allocate Memory failed!");
-//	textureMemory = lb.get(0);
-//	VK10.vkBindImageMemory(device.device, texture, textureMemory, 0L);
 }

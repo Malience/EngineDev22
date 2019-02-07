@@ -48,7 +48,9 @@ public class CommandBuffer extends VkCommandBuffer {
 			.framebuffer(framebuffer);
 			renderbegininfo.renderArea().offset().set(0, 0);
 			renderbegininfo.renderArea().extent().set(width,  height);
-			VkClearValue.Buffer clearvalue = VkClearValue.callocStack(1, stack);
+			VkClearValue.Buffer clearvalue = VkClearValue.callocStack(2, stack);
+			clearvalue.get(0).color().float32(3, 1);
+			clearvalue.get(1).depthStencil().depth(1).stencil(0);
 			renderbegininfo.pClearValues(clearvalue);
 			
 			

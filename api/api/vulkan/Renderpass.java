@@ -34,14 +34,28 @@ public class Renderpass {
 			.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			.format(swapchain.format);
 			
+//			attachments.get(1)
+//			.samples(VK_SAMPLE_COUNT_1_BIT)
+//			.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+//			.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//			.stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+//			.stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+//			.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+//			.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+//			.format(swapchain.format);
+			
 			VkAttachmentReference.Buffer ref = VkAttachmentReference.callocStack(1, stack)
 			.attachment(0)
 			.layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			VkAttachmentReference dref = VkAttachmentReference.callocStack(stack)
+			.attachment(1)
+			.layout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 			
 			VkSubpassDescription.Buffer subpasses = VkSubpassDescription.callocStack(1, stack)
 			.pipelineBindPoint(VK_PIPELINE_BIND_POINT_GRAPHICS)
 			.colorAttachmentCount(1)
 			.pColorAttachments(ref);
+			//.pDepthStencilAttachment(dref);
 			
 			VkSubpassDependency.Buffer dependency = VkSubpassDependency.callocStack(1, stack)
 			.srcSubpass(VK_SUBPASS_EXTERNAL)

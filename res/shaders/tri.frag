@@ -12,11 +12,12 @@ layout(binding = 2) uniform TextureBuffer { //Because these would be textures in
 	vec4 ambient;
 	vec4 specular; //a == specular coeff
 	vec4 emissive;
-};
+} object;
 
 layout(binding = 3) uniform LightBuffer {
 	vec4 pos;
 	vec4 color;
+	vec4 eyePos;
 } light;
 
 void phongShade() {
@@ -24,16 +25,26 @@ void phongShade() {
 }
 
 void main() {
-	//vec3 normal = normalize(Normal);
-	//vec3 lightDir = normalize(light.pos.rgb - Pos);
-	//float dirDot = dot(lightDir, normal);
+	float ambientLighting = 0.1;
+	float specularLighting = 0.5;
 	
-	//vec4 outColor = vec4(0);
-	//if(dirDot > 0.0) {
-	//	outColor = outColor + light.color * diffuse * dirDot;
-	//}
-	//outColor = outColor + ambient + emissive;
-	//outColor.a = 1.0;
-	vec4 outColor = diffuse;
+	vec3 normal = normalize(Normal);
+	vec3 lightDir = normalize(light.pos.xyz - Pos);
+	float dirDot = dot(lightDir, normal);
+	
+	vec3 eyeDir = normalize(eyePos - Pos);
+	vec3 reflectDir = reflect(-lightDir, normal);
+	float s = pow(dot(viewDir, reflectDir), 32);
+	
+	vec4 outColor = vec4(0);
+	if(dirDot > 0.0) {
+		vec4 ambient = light.color * ambientLighting * object.ambient;
+		vec4 diffuse = light.color * dirDot * object.diffuse;
+		vec4 specular = specularLighting * s * light.color * object.specular;
+		
+		outColor = outColor + ambient + diffuse + specular;
+	}
+	outColor.a = 1.0;
+	//vec4 outColor = diffuse;
     FragColor = outColor;
 }

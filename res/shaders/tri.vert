@@ -22,6 +22,7 @@ void main() {
 	mat4 mvp = proj * view * model;
     gl_Position = mvp * vec4(pos, 1.0);
     Pos = pos;
-    Normal = (mvp * vec4(normal, 1.0)).xyz;
+    mat3 timvp = mat3(transpose(inverse(mvp)));
+    Normal = timvp * normal;
     TexCoord = texCoord;
 }
