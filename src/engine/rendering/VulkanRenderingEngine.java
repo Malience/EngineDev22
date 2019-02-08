@@ -400,6 +400,9 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	float lightrotx, lightroty;
 	float distance = -8f;
 	float eAlt = 0;
+	Vector3f cameraPos = new Vector3f();
+	Vector3f zero = new Vector3f(0, 0, 0);
+	Vector3f up = new Vector3f(0, 1, 0);
 	@Override
 	public void run() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
@@ -419,9 +422,14 @@ public class VulkanRenderingEngine extends RenderingEngine {
 					roty += (((float) y.get(0)) - centery) * rotSpeed * Time.getDelta();
 					if(roty > 89) roty = 89;
 					if(roty < -89) roty = -89;
+					cameraPos.set(0, 0, distance);
 					rot.axisAngle(1, 0, 0, roty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, rotx * Constants.RADIAN), rot);
 					view.setRotation(rot);
-					view.translation(0, 0, distance);
+					view.setTranslation(cameraPos);
+//					view.transform(cameraPos);
+//					view.setLookAt(cameraPos, zero, up);
+//					Matrix4f m = new Matrix4f().setTranslation(cameraPos);
+//					view.mul(m, view);
 					viewProjectionBuffer.map(viewProjection);
 //					Vector3f v = new Vector3f();
 //					view.transform(v);
@@ -465,14 +473,18 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				lightrotx -= rotSpeed * Time.getDelta();
 			}
 			if(lightMoved) {
-				lightPos.set(0, 0, 8f);
+				lightPos.set(0, 0, -8f);
 				Quaternion q = new Quaternion();
-				rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(1, 0, 0, lightrotx * Constants.RADIAN), rot);
+				rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN), rot);
+				Matrix4f m = new Matrix4f();
+				m.setRotation(rot);
+				m.transform(lightPos);
 				//rot.transform(lightPos);
 				//view.transform(lightPos);
 				//projection.transform(lightPos);
 				v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 				lightBuffer.map(v2);
+				lightMoved = false;
 			}
 			
 			eAlt += 5f * Time.getDelta();
