@@ -24,7 +24,7 @@ public class DescriptorLayout {
 			VkDescriptorSetLayoutBinding base = VkDescriptorSetLayoutBinding.calloc()
 			.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 			.descriptorCount(1)
-			.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+			.stageFlags(VK10.VK_SHADER_STAGE_ALL_GRAPHICS)//TODO: Fix this whole mess
 			.pImmutableSamplers(null);	
 			VkDescriptorSetLayoutBinding.Buffer desLayout = VkDescriptorSetLayoutBinding.callocStack(vertexDescriptors + fragmentDescriptors, stack);
 			for(int i = 0; i < vertexDescriptors; i++) desLayout.get(i).set(base).binding(i);

@@ -98,7 +98,7 @@ public class Image {
 	
 	public static long createImageView(Device device, long image, int format) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
-			VkImageViewCreateInfo info = VkImageViewCreateInfo.mallocStack(stack)
+			VkImageViewCreateInfo info = VkImageViewCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
 			.image(image)
 			.viewType(VK_IMAGE_VIEW_TYPE_2D)
@@ -109,11 +109,6 @@ public class Image {
 			.levelCount(1)
 			.baseArrayLayer(0)
 			.layerCount(1);
-//			info.components()
-//			.r(VK_COMPONENT_SWIZZLE_R)
-//			.g(VK_COMPONENT_SWIZZLE_G)
-//			.b(VK_COMPONENT_SWIZZLE_B)
-//			.a(VK_COMPONENT_SWIZZLE_A);
 			
 			LongBuffer lb = stack.mallocLong(1);
 			if(vkCreateImageView(device.device, info, null, lb) != VK_SUCCESS)
@@ -135,13 +130,10 @@ public class Image {
 			.image(image)
 			.srcAccessMask(0)
 			.dstAccessMask(VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-			if(format == VK10.VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK10.VK_FORMAT_D24_UNORM_S8_UINT) {
-				barrier.subresourceRange()
-				.aspectMask(VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
-			} else {
-				barrier.subresourceRange()
-				.aspectMask(VK10.VK_IMAGE_ASPECT_DEPTH_BIT);
-			}
+			barrier.subresourceRange()
+			.aspectMask(VK10.VK_IMAGE_ASPECT_DEPTH_BIT | VK10.VK_IMAGE_ASPECT_STENCIL_BIT);
+			barrier.subresourceRange()
+			.aspectMask(VK10.VK_IMAGE_ASPECT_DEPTH_BIT);
 			barrier.subresourceRange()
 			.baseMipLevel(0)
 			.levelCount(1)

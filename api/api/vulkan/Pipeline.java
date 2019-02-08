@@ -98,7 +98,7 @@ public class Pipeline {
 			VkRect2D.Buffer scissor = VkRect2D.callocStack(1, stack);
 			scissor.offset().set(0, 0);
 			scissor.extent().set(swapchain.extent);
-			extent= swapchain.extent;
+			extent = swapchain.extent;
 			
 			VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
@@ -146,7 +146,7 @@ public class Pipeline {
 			.pRasterizationState(rasterizer)
 			.pMultisampleState(multisampling)
 			.pColorBlendState(colorBlending)
-			//.pDepthStencilState(depthInfo)
+			.pDepthStencilState(depthInfo)
 			.layout((layout = lb.get(0)))
 			.renderPass(renderpass.renderpass)
 			.subpass(0);

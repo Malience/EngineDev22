@@ -3,20 +3,32 @@ package engine.rendering;
 import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D;
+import static org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D;
 import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT;
 import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE;
 import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
 import static org.lwjgl.vulkan.VK10.vkAllocateMemory;
 import static org.lwjgl.vulkan.VK10.vkBindBufferMemory;
+import static org.lwjgl.vulkan.VK10.vkBindImageMemory;
 import static org.lwjgl.vulkan.VK10.vkCreateBuffer;
+import static org.lwjgl.vulkan.VK10.vkCreateImage;
+import static org.lwjgl.vulkan.VK10.vkCreateImageView;
 import static org.lwjgl.vulkan.VK10.vkDestroyBuffer;
 import static org.lwjgl.vulkan.VK10.vkDeviceWaitIdle;
 import static org.lwjgl.vulkan.VK10.vkFreeMemory;
 import static org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements;
+import static org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements;
 import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties;
 import static org.lwjgl.vulkan.VK10.vkMapMemory;
 import static org.lwjgl.vulkan.VK10.vkUnmapMemory;
@@ -45,6 +57,7 @@ import org.lwjgl.vulkan.VkDescriptorPoolSize;
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
 import org.lwjgl.vulkan.VkImageCreateInfo;
 import org.lwjgl.vulkan.VkImageMemoryRequirementsInfo2;
+import org.lwjgl.vulkan.VkImageViewCreateInfo;
 import org.lwjgl.vulkan.VkMemoryAllocateInfo;
 import org.lwjgl.vulkan.VkMemoryRequirements;
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
@@ -163,7 +176,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	BufferObject[] modelBuffer, texturesBuffer;
 	
 	public void createVertexBuffer() {
-		int vdiv = 20; int hdiv = 20;
+		int vdiv = 10; int hdiv = 10;
 		vertices = Sphere.generateSphereVertices(0.5f, vdiv, hdiv);
 		indices = Sphere.generateSphereIndices(vdiv, hdiv);
 		
@@ -179,14 +192,14 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		viewProjectionBuffer.createUniformBuffer(16 * 4 * 2);
 		
 		lightBuffer = new BufferObject(physicalDevice, device);
-		lightBuffer.createUniformBuffer(4 * 2 * 4);
+		lightBuffer.createUniformBuffer(4 * 3 * 4);
 		
 		float near = 0.1f, far = 40f;
 		float aspect = 800f / 600f;
 		
 		projection.perspective(90f, aspect, near, far);
 		view.identity();
-		view.translation(0, 0, -12f);
+		view.translation(0, 0, distance);
 		viewProjectionBuffer.map(viewProjection);
 		
 		desLayout = new DescriptorLayout(device, 2, 2);
@@ -196,78 +209,83 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		modelBuffer = new BufferObject[96];
 		texturesBuffer = new BufferObject[96];
 		
-		float cube = 1f;
+		float cube = 2f;
 		float cubeHalf = cube / 2f;
 		float face = 2f * cube;
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
-			Matrix4f.Buffer model = Matrix4f.mallocStack(96, stack);
-			Matrix4f.Buffer texture = Matrix4f.mallocStack(96, stack);
+			Matrix4f.Buffer model = Matrix4f.callocStack(96, stack);
+			Matrix4f.Buffer texture = Matrix4f.callocStack(96, stack);
 			for(int i = 0; i < 96; i++) model.get(i).identity();
 			
 			//FRONT FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(i * 4 + j).translation((j - 2) * cube + cubeHalf, (i - 2) * cube + cubeHalf, face);
-					//texture.get(i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = i * 4 + j;
+					model.get(index).translation((j - 2) * cube + cubeHalf, (i - 2) * cube + cubeHalf, face);
+					float intensity = (j + 1) * 0.25f;
+					if(i == 0) texture.get(index).m00(intensity).m10(0.0f).m20(0.0f).m30(1.0f);
+					if(i == 1) texture.get(index).m00(0.0f).m10(intensity).m20(0.0f).m30(1.0f);
+					if(i == 2) texture.get(index).m00(0.0f).m10(0.0f).m20(intensity).m30(1.0f);
+					if(i == 3) texture.get(index).m00(intensity).m10(intensity).m20(intensity).m30(1.0f);
 				}
 			}
 			//RIGHT FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(16 + i * 4 + j).translation(face, (i - 2) * cube + cubeHalf, (j - 2) * cube + cubeHalf);
-					//texture.get(16 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = 16 + i * 4 + j;
+					model.get(index).translation(face, (i - 2) * cube + cubeHalf, (1 - j) * cube + cubeHalf);
+					float intensity = (j + 1) * 0.25f;
+					if(i == 0) texture.get(index).m01(intensity).m11(0.0f).m21(0.0f).m31(1.0f);
+					if(i == 1) texture.get(index).m01(0.0f).m11(intensity).m21(0.0f).m31(1.0f);
+					if(i == 2) texture.get(index).m01(0.0f).m11(0.0f).m21(intensity).m31(1.0f);
+					if(i == 3) texture.get(index).m01(intensity).m11(intensity).m21(intensity).m31(1.0f);
 				}
 			}
 			//BACK FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(32 + i * 4 + j).translation((1 - j) * cube + cubeHalf, (i - 2) * cube + cubeHalf, -face);
-					//texture.get(32 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = 32 + i * 4 + j;
+					model.get(index).translation((1 - j) * cube + cubeHalf, (i - 2) * cube + cubeHalf, -face);
+					texture.get(index).m00((i + 1) * 0.25f).m10(0.0f).m20(0.0f).m30(1.0f);
+					texture.get(index).m01((j + 1) * 0.25f).m11(0.0f).m21(0.0f).m31(1.0f);
 				}
 			}
 			//LEFT FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(48 + i * 4 + j).translation(-face, (i - 2) * cube + cubeHalf, (1 - j) * cube + cubeHalf);
-					//texture.get(48 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = 48 + i * 4 + j;
+					model.get(index).translation(-face, (i - 2) * cube + cubeHalf, (1 - j) * cube + cubeHalf);
+					texture.get(index).m00(0.2f).m10(0.0f).m20(0.0f).m30(1.0f);//Ambient
+					texture.get(index).m01(0.5f).m11(0.0f).m21(0.0f).m31(1.0f);//Diffuse
+					texture.get(index).m03(0.0f).m13((i + 1) * 0.25f).m23((j + 1) * 0.25f).m33(1.0f);//Emissive
 				}
 			}
+			emissiveAlt.get(0, texture.get(48));
+			emissiveAlt.get(1, texture.get(49));
+			emissiveAlt.get(2, texture.get(50));
+			emissiveAlt.get(3, texture.get(51));
+			
 			//BOTTOM FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(64 + i * 4 + j).translation((j - 2) * cube + cubeHalf, -face, (i - 2) * cube + cubeHalf);
-					//texture.get(64 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = 64 + i * 4 + j;
+					model.get(index).translation((j - 2) * cube + cubeHalf, -face, (i - 2) * cube + cubeHalf);
+					texture.get(index).m00(0.2f).m10(0.0f).m20(0.0f).m30(1.0f);//Ambient
+					texture.get(index).m01(0.5f).m11(0.0f).m21(0.0f).m31(1.0f);//Diffuse
+					texture.get(index).m02(0.0f).m12((i + 1) * 0.25f).m22(0.0f).m32((j + 1) * 0.25f);//Specular
 				}
 			}
 			//TOP FACE
 			for(int i = 0; i < 4; i++) {
 				for(int j = 0; j < 4; j++) {
-					model.get(80 + i * 4 + j).translation((j - 2) * cube + cubeHalf, face, (i - 2) * cube + cubeHalf);
-					//texture.get(80 + i * 4 + j).m00(1.0f).m01(1.0f).m02(1.0f).m03(1.0f);
+					int index = 80 + i * 4 + j;
+					model.get(index).translation((j - 2) * cube + cubeHalf, face, (i - 2) * cube + cubeHalf);
+					texture.get(index).m00(0.0f).m10((j + 1) * 0.25f).m20((i + 1) * 0.25f).m30(1.0f);//Ambient
+					texture.get(index).m01((i - j + 3) * 0.25f).m11(0.0f).m21(0.0f).m31(1.0f);//Diffuse
+					texture.get(index).m03((i + 1) * 0.25f).m13(0.5f).m23((j + 1) * 0.25f).m33(1.0f);//Emissive
 				}
 			}
-			
-			
-			texture.get(0).m00(0.25f).m03(1.0f); //Red
-			texture.get(1).m01(0.25f).m03(1.0f); //Green
-			texture.get(2).m01(0.25f).m02(0.25f).m03(1.0f); //Green
-			texture.get(3).m02(0.25f).m03(1.0f); //Green
-			
-			texture.get(4).m00(0.5f).m03(1.0f); //Red
-			texture.get(5).m01(0.5f).m03(1.0f); //Green
-			texture.get(6).m01(0.5f).m02(0.5f).m03(1.0f); //Green
-			texture.get(7).m02(0.5f).m03(1.0f); //Green
-			
-			texture.get(8).m00(0.75f).m03(1.0f); //Red
-			texture.get(9).m01(0.75f).m03(1.0f); //Green
-			texture.get(10).m01(0.75f).m02(0.75f).m03(1.0f); //Green
-			texture.get(11).m02(0.75f).m03(1.0f); //Green
-			
-			texture.get(12).m00(1.0f).m03(1.0f); //Red
-			texture.get(13).m01(1.0f).m03(1.0f); //Green
-			texture.get(14).m01(1.0f).m02(1.0f).m03(1.0f); //Green
-			texture.get(15).m02(1.0f).m03(1.0f); //Green
 			
 			for(int i = 0; i < 96; i++) {
 				modelBuffer[i] = new BufferObject(physicalDevice, device);
@@ -286,24 +304,25 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			}
 		
 		}
-		lightPos.set(0, 0, -12f);
-		view.transform(lightPos);
-		projection.transform(lightPos);
+		lightPos.set(0, 0, 8f);
+		//view.transform(lightPos);
+		//projection.transform(lightPos);
 		v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 		v2.get(1).set(1, 1, 1, 1);
-		v2.get(2).set(0, 0, -12, 1);
+		Matrix4f invView = view.invert(new Matrix4f());
+		v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
 		lightBuffer.map(v2);
 //		int format = Image.findFormat(physicalDevice, 
 //				VK10.VK_IMAGE_TILING_OPTIMAL, VK10.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, 
 //				VK10.VK_FORMAT_D16_UNORM, VK10.VK_FORMAT_D32_SFLOAT, VK10.VK_FORMAT_D32_SFLOAT_S8_UINT, VK10.VK_FORMAT_D24_UNORM_S8_UINT);
-//		//int format = VK10.VK_FORMAT_D32_SFLOAT;
+		int format = VK10.VK_FORMAT_D32_SFLOAT_S8_UINT;
 //		System.out.println(format);
-//		image = Image.createImage(physicalDevice, device, 800, 600, format);
-//		//Image.transition(commandPool.createBuffer(), graphicsQueue, image, format, VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-//		imageMemory = Image.allocateImage(physicalDevice, device, image, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-//		imageView = Image.createImageView(device, image, format);
-		
+		image = Image.createImage(physicalDevice, device, 800, 600, format);
+		imageMemory = Image.allocateImage(physicalDevice, device, image, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		imageView = Image.createImageView(device, image, format);
+		Image.transition(commandPool.createBuffer(), graphicsQueue, image, format, VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	}
+	Matrix4f.Buffer emissiveAlt = Matrix4f.calloc(4);
 	Vector4f.Buffer v2 = Vector4f.calloc(3);
 	Vector3f lightPos = new Vector3f();
 	Matrix4f lightMatrix = new Matrix4f();
@@ -375,9 +394,12 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	private static boolean framebufferResized = false;
 	QueueSubmitInfo info = new QueueSubmitInfo();
 	boolean held = false;
+	float centerx = 800f/2f, centery = 600f/2f;
 	float origx, origy;
 	float rotx, roty;
 	float lightrotx, lightroty;
+	float distance = -8f;
+	float eAlt = 0;
 	@Override
 	public void run() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
@@ -385,7 +407,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_PRESS) {
 				DoubleBuffer x = stack.mallocDouble(1), y = stack.mallocDouble(1);
 				GLFW.glfwGetCursorPos(window.getHandle(), x, y);
-				GLFW.glfwSetCursorPos(window.getHandle(), 0, 0);
+				GLFW.glfwSetCursorPos(window.getHandle(), centerx, centery);
 				if(!held) {
 					GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_HIDDEN);
 					origx = (float)x.get(0); origy = (float)y.get(0);
@@ -393,18 +415,19 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				} else {
 					Quaternion q = new Quaternion();
 					float rotSpeed = 5;
-					rotx += ((float) x.get(0)) * rotSpeed * Time.getDelta();
-					roty += ((float) y.get(0)) * rotSpeed * Time.getDelta();
+					rotx += (((float) x.get(0)) - centerx) * rotSpeed * Time.getDelta();
+					roty += (((float) y.get(0)) - centery) * rotSpeed * Time.getDelta();
 					if(roty > 89) roty = 89;
 					if(roty < -89) roty = -89;
-					rot.axisAngle(0, 1, 0, rotx * Constants.RADIAN).mul(q.axisAngle(0, 0, 1, roty * Constants.RADIAN), rot);
+					rot.axisAngle(1, 0, 0, roty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, rotx * Constants.RADIAN), rot);
 					view.setRotation(rot);
-					view.translation(0, 0, -12f);
+					view.translation(0, 0, distance);
 					viewProjectionBuffer.map(viewProjection);
-					Vector3f v = new Vector3f();
-					view.transform(v);
-					projection.transform(v);
-					v2.get(2).x(v.x()).y(v.y()).z(v.z());
+//					Vector3f v = new Vector3f();
+//					view.transform(v);
+//					projection.transform(v);
+					Matrix4f invView = view.invert(new Matrix4f());
+					v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
 					lightBuffer.map(v2);
 				}
 			}
@@ -413,34 +436,51 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				GLFW.glfwSetCursorPos(window.getHandle(), origx, origy);
 				held = false;
 			}
-			float rotSpeed = 100;
+			GLFW.glfwSetScrollCallback(window.getHandle(), (long window, double x, double y) -> {
+				float scrollSpeed = 0.5f;
+				distance += scrollSpeed * y;
+				view.translation(0, 0, distance);
+				viewProjectionBuffer.map(viewProjection);
+			});
+			float rotSpeed = 1000;
 			boolean lightMoved = false;
-			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS) {
-				lightMoved = true;
-				lightrotx += rotSpeed * Time.getDelta();
-			}
-			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_L) == GLFW.GLFW_PRESS) {
-				lightMoved = true;
-				lightrotx -= rotSpeed * Time.getDelta();
-			}
-			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS) {
+			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS ||
+				GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS) {
 				lightMoved = true;
 				lightroty += rotSpeed * Time.getDelta();
 			}
-			if(GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_K) == GLFW.GLFW_PRESS) {
+			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS ||
+				GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_K) == GLFW.GLFW_PRESS) {
 				lightMoved = true;
 				lightroty -= rotSpeed * Time.getDelta();
 			}
+			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS ||
+				GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_J) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightrotx += rotSpeed * Time.getDelta();
+			}
+			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS ||
+				GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_L) == GLFW.GLFW_PRESS) {
+				lightMoved = true;
+				lightrotx -= rotSpeed * Time.getDelta();
+			}
 			if(lightMoved) {
-				lightPos.set(0, 0, -12f);
+				lightPos.set(0, 0, 8f);
 				Quaternion q = new Quaternion();
-				rot.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN).mul(q.axisAngle(0, 0, 1, lightroty * Constants.RADIAN), rot);
-				rot.transform(lightPos);
-				view.transform(lightPos);
-				projection.transform(lightPos);
+				rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(1, 0, 0, lightrotx * Constants.RADIAN), rot);
+				//rot.transform(lightPos);
+				//view.transform(lightPos);
+				//projection.transform(lightPos);
 				v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 				lightBuffer.map(v2);
 			}
+			
+			eAlt += 5f * Time.getDelta();
+			for(int i = 0; i < 4; i++) {
+				emissiveAlt.get(i).m03(0.0f).m13((float)Math.sin(eAlt)).m23((float)Math.cos(eAlt)).m33(1.0f);//Emissive
+				texturesBuffer[48 + i].map(emissiveAlt.get(i));
+			}
+			
 			IntBuffer ib = stack.mallocInt(1);
 			
 			long imageAvailableSemaphore = this.imageAvailableSemaphore[currentFrame];

@@ -29,7 +29,8 @@ public class Sphere {
 				//Swapped Y and Z axes
 				float z = (float) (Math.sin(i * hstep) * Math.sin(j * vstep));
 				float y = (float) (Math.cos(j * vstep));
-				vertices[j + i * hdiv] = new Vertex(radius * x, radius * y, radius * z, x, y, z, sStep * j, tStep * i);
+				float length = 1.0f / (float) Math.sqrt(x * x + y * y + z * z);//Attempt to fix normals, I don't think it worked
+				vertices[j + i * hdiv] = new Vertex(radius * x, radius * y, radius * z, length * x, length * y, length * z, sStep * j, tStep * i);
 			}
 		}
 		return vertices;

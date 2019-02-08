@@ -7,10 +7,15 @@ layout(location = 2) in vec2 TexCoord;
 
 layout(location = 0) out vec4 FragColor;
 
+layout(binding = 0) uniform ViewProjectionBuffer {
+	mat4 view;
+	mat4 proj;
+};
+
 layout(binding = 2) uniform TextureBuffer { //Because these would be textures in more complex shaders
-	vec4 diffuse; //Technically rgba, mainly vec4 for alignment reasons
 	vec4 ambient;
-	vec4 specular; //a == specular coeff
+	vec4 diffuse; //Technically rgba, mainly vec4 for alignment reasons
+	vec4 specular; //a == specular exp coeff
 	vec4 emissive;
 } object;
 
@@ -20,31 +25,28 @@ layout(binding = 3) uniform LightBuffer {
 	vec4 eyePos;
 } light;
 
-void phongShade() {
-	//Multiple lights support
-}
-
 void main() {
-	float ambientLighting = 0.1;
-	float specularLighting = 0.5;
-	
 	vec3 normal = normalize(Normal);
-	vec3 lightDir = normalize(light.pos.xyz - Pos);
-	float dirDot = dot(lightDir, normal);
+	vec3 lightPos = vec3(light.pos);
+	vec3 lightColor = vec3(light.color);
 	
-	vec3 eyeDir = normalize(eyePos - Pos);
+	//Ambient
+	float ambientLighting = 0.3;
+	vec3 ambient = ambientLighting * lightColor * vec3(object.ambient);
+	
+	//Diffuse
+	vec3 lightDir = normalize(lightPos - Pos);
+	float dirDot = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = dirDot * lightColor * vec3(object.diffuse);
+	
+	//Specular
+	float specularLighting = 0.5;
+	vec3 eyeDir = normalize(light.eyePos.xyz - Pos);
 	vec3 reflectDir = reflect(-lightDir, normal);
-	float s = pow(dot(viewDir, reflectDir), 32);
+	float s = pow(dot(eyeDir, reflectDir), object.specular.a);
+	vec3 specular = specularLighting * s * lightColor * object.specular.rgb;
 	
-	vec4 outColor = vec4(0);
-	if(dirDot > 0.0) {
-		vec4 ambient = light.color * ambientLighting * object.ambient;
-		vec4 diffuse = light.color * dirDot * object.diffuse;
-		vec4 specular = specularLighting * s * light.color * object.specular;
-		
-		outColor = outColor + ambient + diffuse + specular;
-	}
-	outColor.a = 1.0;
-	//vec4 outColor = diffuse;
-    FragColor = outColor;
+	vec3 outColor = ambient + diffuse + object.emissive.rgb;
+	if(specular.r + specular.g + specular.b > 0.0) outColor = outColor + specular;
+    FragColor = vec4(outColor, 1.0);
 }

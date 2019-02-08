@@ -24,7 +24,7 @@ public class Renderpass {
 	public Renderpass(Device device, Swapchain swapchain) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			this.device = device.device;
-			VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.callocStack(1, stack)
+			VkAttachmentDescription.Buffer attachments = VkAttachmentDescription.callocStack(2, stack)
 			.samples(VK_SAMPLE_COUNT_1_BIT)
 			.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
 			.storeOp(VK_ATTACHMENT_STORE_OP_STORE)
@@ -34,15 +34,15 @@ public class Renderpass {
 			.finalLayout(KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			.format(swapchain.format);
 			
-//			attachments.get(1)
-//			.samples(VK_SAMPLE_COUNT_1_BIT)
-//			.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
-//			.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
-//			.stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-//			.stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
-//			.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-//			.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-//			.format(swapchain.format);
+			attachments.get(1)
+			.samples(VK_SAMPLE_COUNT_1_BIT)
+			.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+			.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+			.stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+			.stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+			.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+			.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+			.format(VK10.VK_FORMAT_D32_SFLOAT_S8_UINT);
 			
 			VkAttachmentReference.Buffer ref = VkAttachmentReference.callocStack(1, stack)
 			.attachment(0)
@@ -54,8 +54,8 @@ public class Renderpass {
 			VkSubpassDescription.Buffer subpasses = VkSubpassDescription.callocStack(1, stack)
 			.pipelineBindPoint(VK_PIPELINE_BIND_POINT_GRAPHICS)
 			.colorAttachmentCount(1)
-			.pColorAttachments(ref);
-			//.pDepthStencilAttachment(dref);
+			.pColorAttachments(ref)
+			.pDepthStencilAttachment(dref);
 			
 			VkSubpassDependency.Buffer dependency = VkSubpassDependency.callocStack(1, stack)
 			.srcSubpass(VK_SUBPASS_EXTERNAL)

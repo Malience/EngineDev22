@@ -19,10 +19,8 @@ layout(binding = 1) uniform ModelBuffer {
 };
 
 void main() {
-	mat4 mvp = proj * view * model;
-    gl_Position = mvp * vec4(pos, 1.0);
-    Pos = pos;
-    mat3 timvp = mat3(transpose(inverse(mvp)));
-    Normal = timvp * normal;
+	gl_Position = proj * view * model * vec4(pos, 1.0);
+    Pos = vec3(model * vec4(pos, 1.0));//Into World space
+    Normal = mat3(transpose(inverse(model))) * normal; //In weird space
     TexCoord = texCoord;
 }
