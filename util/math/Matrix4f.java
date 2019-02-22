@@ -159,7 +159,7 @@ public class Matrix4f extends Struct implements NativeResource {
 		m03(m00() * x + m01() * y + m02() * z + m03());
 		m13(m10() * x + m11() * y + m12() * z + m13());
 		m23(m20() * x + m21() * y + m22() * z + m23());
-		if((prop & AFFINE) != 0) m33(m30() * x + m31() * y + m32() * z + m33());
+		m33(m30() * x + m31() * y + m32() * z + m33());
 		prop(prop() & ~(PERSPECTIVE | IDENTITY));
 		return this;
 	}
@@ -216,6 +216,66 @@ public class Matrix4f extends Struct implements NativeResource {
 				m20, m21, m22, 0f,
 				0f, 0f, 0f, 1f,
 				AFFINE);
+	}
+	
+	public Matrix4f rotateX(float angle) {return rotateX(angle, this);}
+	public Matrix4f rotateX(float angle, Matrix4f out) {
+		float cos = (float) Math.cos(angle);
+		float sin = (float) Math.sin(angle);
+		
+		//Load from memory
+		float m01 = m01(), m02 = m02();
+		float m11 = m11(), m12 = m12();
+		float m21 = m21(), m22 = m22();
+		float m31 = m31(), m32 = m32();
+		
+		//Calculate and Save to memory
+        out.m01(m01 * cos + m02 * sin); out.m02(m01 * -sin + m02 * cos);
+        out.m11(m11 * cos + m12 * sin); out.m12(m11 * -sin + m12 * cos);
+        out.m21(m21 * cos + m22 * sin); out.m22(m21 * -sin + m22 * cos);
+        out.m31(m31 * cos + m32 * sin); out.m32(m31 * -sin + m32 * cos);
+        
+        return out; //TODO: update properties
+	}
+	
+	public Matrix4f rotateY(float angle) {return rotateY(angle, this);}
+	public Matrix4f rotateY(float angle, Matrix4f out) {
+		float cos = (float) Math.cos(angle);
+		float sin = (float) Math.sin(angle);
+		
+		//Load from memory
+		float m00 = m00(), m02 = m02();
+		float m10 = m10(), m12 = m12();
+		float m20 = m20(), m22 = m22();
+		float m30 = m30(), m32 = m32();
+		
+		//Calculate and Save to memory
+        out.m00(m00 * cos + m02 * sin); out.m02(m00 * -sin + m02 * cos);
+        out.m10(m10 * cos + m12 * sin); out.m12(m10 * -sin + m12 * cos);
+        out.m20(m20 * cos + m22 * sin); out.m22(m20 * -sin + m22 * cos);
+        out.m30(m30 * cos + m32 * sin); out.m32(m30 * -sin + m32 * cos);
+        
+        return out; //TODO: update properties
+	}
+	//TODO: Actually test these
+	public Matrix4f rotateZ(float angle) {return rotateZ(angle, this);}
+	public Matrix4f rotateZ(float angle, Matrix4f out) {
+		float cos = (float) Math.cos(angle);
+		float sin = (float) Math.sin(angle);
+		
+		//Load from memory
+		float m00 = m00(), m01 = m01();
+		float m10 = m10(), m11 = m11();
+		float m20 = m20(), m21 = m21();
+		float m30 = m30(), m31 = m31();
+		
+		//Calculate and Save to memory
+        out.m00(m00 * cos + m01 * sin); out.m01(m00 * -sin + m01 * cos);
+        out.m10(m10 * cos + m11 * sin); out.m11(m10 * -sin + m11 * cos);
+        out.m20(m20 * cos + m21 * sin); out.m21(m20 * -sin + m21 * cos);
+        out.m30(m30 * cos + m31 * sin); out.m31(m30 * -sin + m31 * cos);
+        
+        return out; //TODO: update properties
 	}
 	
 	//~~~~~~~~~~~SCALE~~~~~~~~~~~\\
@@ -590,7 +650,7 @@ public class Matrix4f extends Struct implements NativeResource {
 	
 	public Matrix4f perspective(float fov, float aspect, float near, float far) {return perspective(fov, aspect, near, far, this);}
 	public Matrix4f perspective(float fov, float aspect, float near, float far, Matrix4f out){
-		float tanFov2 = 1.0f / (float)Math.tan((fov * 0.5f) * Constants.RADIAN), 
+		float tanFov2 = 1.0f / (float)Math.tan(fov * 0.5f * Constants.RADIAN), 
 				range = 1.0f / (near - far);
 		return out.set(
 				tanFov2 / aspect, 0f, 0f, 0f,
@@ -637,10 +697,10 @@ public class Matrix4f extends Struct implements NativeResource {
 		unX *= lenUn; unY *= lenUn; unZ *= lenUn;
 		
 		return set(
-				rX, rY, rZ, 0f,
-				unX, unY, unZ, 0f,
-				fX, fY, fZ, 0f,
-				0f, 0f, 0f, 1f,
+				rX, 	rY, 	rZ, 	pX,
+				unX, 	unY, 	unZ, 	pY,
+				fX, 	fY, 	fZ, 	pZ,
+				0f, 	0f, 	0f, 	1f,
 				AFFINE);
 	}
 	

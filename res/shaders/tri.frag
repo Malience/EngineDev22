@@ -26,9 +26,15 @@ layout(binding = 3) uniform LightBuffer {
 } light;
 
 void main() {
-	vec3 normal = normalize(Normal);
+	vec3 objPos = vec3(Pos);
+	vec3 norm = normalize(Normal);
 	vec3 lightPos = vec3(light.pos);
 	vec3 lightColor = vec3(light.color);
+	
+	//mat4 iView = transpose(inverse(view));
+	//norm = (iView * vec4(norm, 0)).xyz;
+	lightPos = (view * vec4(lightPos, 1)).xyz;
+	//objPos = (view * vec4(objPos, 1)).xyz;
 	
 	//Ambient
 	float ambientLighting = 0.3;
@@ -36,17 +42,19 @@ void main() {
 	
 	//Diffuse
 	vec3 lightDir = normalize(lightPos - Pos);
-	float dirDot = max(dot(normal, lightDir), 0.0);
+	float dirDot = max(dot(norm, lightDir), 0.0);
 	vec3 diffuse = dirDot * lightColor * vec3(object.diffuse);
 	
+	vec3 specular = vec3(0);
 	//Specular
-	float specularLighting = 0.5;
-	vec3 eyeDir = normalize(light.eyePos.xyz - Pos);
-	vec3 reflectDir = reflect(-lightDir, normal);
-	float s = pow(dot(eyeDir, reflectDir), object.specular.a);
-	vec3 specular = specularLighting * s * lightColor * object.specular.rgb;
+	if(object.specular.a > 0) {
+		float specularLighting = 0.5;
+		vec3 eyeDir = normalize(-Pos); //Advantages of eye space
+		vec3 reflectDir = normalize(reflect(-lightDir, norm));
+		float s = pow(max(dot(eyeDir, reflectDir), 0.0), object.specular.a);
+		specular = specularLighting * s * lightColor * object.specular.rgb;
+	}
 	
-	vec3 outColor = ambient + diffuse + object.emissive.rgb;
-	if(specular.r + specular.g + specular.b > 0.0) outColor = outColor + specular;
+	vec3 outColor = ambient + diffuse + specular + object.emissive.rgb;
     FragColor = vec4(outColor, 1.0);
 }

@@ -20,7 +20,7 @@ layout(binding = 1) uniform ModelBuffer {
 
 void main() {
 	gl_Position = proj * view * model * vec4(pos, 1.0);
-    Pos = vec3(model * vec4(pos, 1.0));//Into World space
-    Normal = mat3(transpose(inverse(model))) * normal; //In weird space
+    Pos = (view * model * vec4(pos, 1.0)).xyz;//Into Eye space
+    Normal = normalize(transpose(inverse(mat3(view * model))) * normal); //In Eye space
     TexCoord = texCoord;
 }

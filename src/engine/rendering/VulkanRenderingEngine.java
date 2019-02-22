@@ -177,7 +177,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	public void createVertexBuffer() {
 		int vdiv = 10; int hdiv = 10;
-		vertices = Sphere.generateSphereVertices(0.5f, vdiv, hdiv);
+		vertices = Sphere.generateSphereVertices(1f, vdiv, hdiv);
 		indices = Sphere.generateSphereIndices(vdiv, hdiv);
 		
 		vertexBuffer = new BufferObject(physicalDevice, device);
@@ -209,7 +209,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		modelBuffer = new BufferObject[96];
 		texturesBuffer = new BufferObject[96];
 		
-		float cube = 2f;
+		float cube = 3f;
 		float cubeHalf = cube / 2f;
 		float face = 2f * cube;
 		
@@ -273,7 +273,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 					model.get(index).translation((j - 2) * cube + cubeHalf, -face, (i - 2) * cube + cubeHalf);
 					texture.get(index).m00(0.2f).m10(0.0f).m20(0.0f).m30(1.0f);//Ambient
 					texture.get(index).m01(0.5f).m11(0.0f).m21(0.0f).m31(1.0f);//Diffuse
-					texture.get(index).m02(0.0f).m12((i + 1) * 0.25f).m22(0.0f).m32((j + 1) * 0.25f);//Specular
+					texture.get(index).m02(0.0f).m12((i + 1) * 0.25f).m22(0.0f).m32((float)Math.pow(2, j));//Specular
 				}
 			}
 			//TOP FACE
@@ -304,13 +304,13 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			}
 		
 		}
-		lightPos.set(0, 0, 8f);
-		//view.transform(lightPos);
+		lightPos.set(0, 0, 20f);
+		view.transform(lightPos);
 		//projection.transform(lightPos);
 		v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 		v2.get(1).set(1, 1, 1, 1);
 		Matrix4f invView = view.invert(new Matrix4f());
-		v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
+		v2.get(2).set(0, 0, -12, 1);
 		lightBuffer.map(v2);
 //		int format = Image.findFormat(physicalDevice, 
 //				VK10.VK_IMAGE_TILING_OPTIMAL, VK10.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, 
@@ -384,7 +384,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			vkDeviceWaitIdle(device.device);
 			disposeSwapchain();
 			createSwapchain(w, h);
-			//persp.perspective(70f, ((float)w.get(0))/((float)h.get(0)), 0.001f, 1000f);
+			projection.perspective(90f, ((float)w.get(0))/((float)h.get(0)), 0.001f, 1000f);
 		}
 	}
 	
@@ -398,7 +398,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	float origx, origy;
 	float rotx, roty;
 	float lightrotx, lightroty;
-	float distance = -8f;
+	float distance = -12f;
 	float eAlt = 0;
 	Vector3f cameraPos = new Vector3f();
 	Vector3f zero = new Vector3f(0, 0, 0);
@@ -426,18 +426,12 @@ public class VulkanRenderingEngine extends RenderingEngine {
 					rot.axisAngle(1, 0, 0, roty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, rotx * Constants.RADIAN), rot);
 					view.setRotation(rot);
 					view.setTranslation(cameraPos);
-//					view.transform(cameraPos);
-//					view.setLookAt(cameraPos, zero, up);
-//					Matrix4f m = new Matrix4f().setTranslation(cameraPos);
-//					view.mul(m, view);
 					viewProjectionBuffer.map(viewProjection);
-//					Vector3f v = new Vector3f();
-//					view.transform(v);
-//					projection.transform(v);
 					Matrix4f invView = view.invert(new Matrix4f());
 					v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
 					lightBuffer.map(v2);
 				}
+				
 			}
 			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_RELEASE && held) {
 				GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
@@ -450,7 +444,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				view.translation(0, 0, distance);
 				viewProjectionBuffer.map(viewProjection);
 			});
-			float rotSpeed = 1000;
+			float rotSpeed = 300;
 			boolean lightMoved = false;
 			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS ||
 				GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_I) == GLFW.GLFW_PRESS) {
@@ -473,15 +467,13 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				lightrotx -= rotSpeed * Time.getDelta();
 			}
 			if(lightMoved) {
-				lightPos.set(0, 0, -8f);
+				lightPos.set(0, 0, -20f);
 				Quaternion q = new Quaternion();
 				rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN), rot);
 				Matrix4f m = new Matrix4f();
 				m.setRotation(rot);
 				m.transform(lightPos);
-				//rot.transform(lightPos);
-				//view.transform(lightPos);
-				//projection.transform(lightPos);
+				view.transform(lightPos);
 				v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 				lightBuffer.map(v2);
 				lightMoved = false;

@@ -18,6 +18,8 @@ import org.lwjgl.system.NativeType;
 import org.lwjgl.system.Struct;
 import org.lwjgl.system.StructBuffer;
 
+import com.sun.xml.internal.bind.annotation.OverrideAnnotationOf;
+
 @NativeType("struct vector3f")
 public class Vector3f extends Struct implements NativeResource {
     public Vector3f() {
@@ -241,6 +243,9 @@ public class Vector3f extends Struct implements NativeResource {
 	
 	public static float ndot(long v) {float x = nx(v), y = ny(v), z = nz(v); return x * x + y * y + z * z;}
 	public static float ndot(long v1, long v2) {return nx(v1) * nx(v2) + ny(v1) * ny(v2) + nz(v1)  * nz(v2);}
+	
+	@Override
+	public String toString() {return x() + ", " + y() + ", " + z();}
 	
 	//Stupid lwjgl generated boilerplate code\\
 	

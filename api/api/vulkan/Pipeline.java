@@ -113,8 +113,8 @@ public class Pipeline {
 			.polygonMode(VK10.VK_POLYGON_MODE_FILL)
 			.lineWidth(1.0f)
 			.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
-			//.frontFace(VK10.VK_FRONT_FACE_CLOCKWISE)
-			.frontFace(VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE)
+			.frontFace(VK10.VK_FRONT_FACE_CLOCKWISE)
+			//.frontFace(VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE)
 			.depthBiasEnable(false);
 			
 			VkPipelineMultisampleStateCreateInfo multisampling = VkPipelineMultisampleStateCreateInfo.callocStack(stack)

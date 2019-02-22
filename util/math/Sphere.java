@@ -8,6 +8,7 @@ import api.vulkan.Vertex;
 import util.Util;
 
 public class Sphere {
+	//TODO: Figure out why the radius breaks it
 	public static Vertex[] generateSphereVertices(float radius, int vdiv, int hdiv) {
 		int total = vdiv * hdiv + 2;
 		Vertex top = new Vertex(0, radius, 0, 0, 1, 0, 0, 0);
@@ -29,8 +30,8 @@ public class Sphere {
 				//Swapped Y and Z axes
 				float z = (float) (Math.sin(i * hstep) * Math.sin(j * vstep));
 				float y = (float) (Math.cos(j * vstep));
-				float length = 1.0f / (float) Math.sqrt(x * x + y * y + z * z);//Attempt to fix normals, I don't think it worked
-				vertices[j + i * hdiv] = new Vertex(radius * x, radius * y, radius * z, length * x, length * y, length * z, sStep * j, tStep * i);
+				//float length = 1.0f / (float) Math.sqrt(x * x + y * y + z * z);//Attempt to fix normals, I don't think it worked
+				vertices[j + i * hdiv] = new Vertex(radius * x, radius * y, radius * z, x, y, z, sStep * j, tStep * i);
 			}
 		}
 		return vertices;
