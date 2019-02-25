@@ -8,6 +8,7 @@ layout(location = 2) in vec2 texCoord;
 layout(location = 0) out vec3 Pos;
 layout(location = 1) out vec3 Normal;
 layout(location = 2) out vec2 TexCoord;
+layout(location = 3) flat out uint instanceIndex;
 
 layout(binding = 0) uniform ViewProjectionBuffer {
 	mat4 view;
@@ -15,12 +16,14 @@ layout(binding = 0) uniform ViewProjectionBuffer {
 };
 
 layout(binding = 1) uniform ModelBuffer {
-	mat4 model;
+	mat4[96] model;
 };
 
 void main() {
-	gl_Position = proj * view * model * vec4(pos, 1.0);
-    Pos = (view * model * vec4(pos, 1.0)).xyz;//Into Eye space
-    Normal = normalize(transpose(inverse(mat3(view * model))) * normal); //In Eye space
+	instanceIndex = gl_InstanceIndex;
+	mat4 Model = model[gl_InstanceIndex];
+	gl_Position = proj * view * Model * vec4(pos, 1.0);
+    Pos = (view * Model * vec4(pos, 1.0)).xyz;//Into Eye space
+    Normal = normalize(transpose(inverse(mat3(view * Model))) * normal); //In Eye space
     TexCoord = texCoord;
 }

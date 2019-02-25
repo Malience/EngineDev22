@@ -1,69 +1,19 @@
 package engine.rendering;
 
-import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-import static org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-import static org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT;
-import static org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED;
-import static org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL;
-import static org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D;
-import static org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D;
-import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-import static org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-import static org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT;
-import static org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE;
-import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-import static org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-import static org.lwjgl.vulkan.VK10.VK_SUCCESS;
-import static org.lwjgl.vulkan.VK10.vkAllocateMemory;
-import static org.lwjgl.vulkan.VK10.vkBindBufferMemory;
-import static org.lwjgl.vulkan.VK10.vkBindImageMemory;
-import static org.lwjgl.vulkan.VK10.vkCreateBuffer;
-import static org.lwjgl.vulkan.VK10.vkCreateImage;
-import static org.lwjgl.vulkan.VK10.vkCreateImageView;
-import static org.lwjgl.vulkan.VK10.vkDestroyBuffer;
 import static org.lwjgl.vulkan.VK10.vkDeviceWaitIdle;
-import static org.lwjgl.vulkan.VK10.vkFreeMemory;
-import static org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements;
-import static org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements;
-import static org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties;
-import static org.lwjgl.vulkan.VK10.vkMapMemory;
-import static org.lwjgl.vulkan.VK10.vkUnmapMemory;
 
-import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.stb.STBIEOFCallback;
-import org.lwjgl.stb.STBImage;
-import org.lwjgl.system.MathUtil;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.vulkan.KHRSwapchain;
 import org.lwjgl.vulkan.VK10;
-import org.lwjgl.vulkan.VkBufferCreateInfo;
-import org.lwjgl.vulkan.VkDescriptorBufferInfo;
-import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo;
-import org.lwjgl.vulkan.VkDescriptorPoolSize;
-import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo;
-import org.lwjgl.vulkan.VkImageCreateInfo;
-import org.lwjgl.vulkan.VkImageMemoryRequirementsInfo2;
-import org.lwjgl.vulkan.VkImageViewCreateInfo;
-import org.lwjgl.vulkan.VkMemoryAllocateInfo;
-import org.lwjgl.vulkan.VkMemoryRequirements;
-import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties;
-import org.lwjgl.vulkan.VkWriteDescriptorSet;
 
 import api.InputAPI;
+import api.vulkan.BufferObject;
 import api.vulkan.CommandBuffer;
 import api.vulkan.CommandPool;
 import api.vulkan.DescriptorLayout;
@@ -71,7 +21,6 @@ import api.vulkan.DescriptorPool;
 import api.vulkan.DescriptorSet;
 import api.vulkan.Device;
 import api.vulkan.Framebuffer;
-import api.vulkan.HotSwap;
 import api.vulkan.Image;
 import api.vulkan.Imageview;
 import api.vulkan.Instance;
@@ -85,12 +34,10 @@ import api.vulkan.Shader;
 import api.vulkan.Surface;
 import api.vulkan.Swapchain;
 import api.vulkan.Vertex;
-import api.vulkan.BufferObject;
 import api.vulkan.Vulkan;
 import engine.core.EngineShutdown;
 import engine.core.Time;
 import engine.debug.Debug;
-import engine.input.Input;
 import engine.window.Window;
 import math.Constants;
 import math.Matrix4f;
@@ -100,7 +47,6 @@ import math.Vector3f;
 import math.Vector4f;
 
 public class VulkanRenderingEngine extends RenderingEngine {
-	IntBuffer intbuffer;
 	Window window;
 	Instance instance;
 	PhysicalDevice physicalDevice;
@@ -120,7 +66,6 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	@Override
 	public void start() {
 		super.start();
-		intbuffer = MemoryUtil.memAllocInt(20);
 		GLFWErrorCallback.createPrint().set();
 		initWindow();
 		initVK();
@@ -171,9 +116,10 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	DescriptorLayout desLayout;
 	DescriptorPool desPool;
-	DescriptorSet[] desSet;
+	DescriptorSet desSet;
 	BufferObject vertexBuffer, indexBuffer, viewProjectionBuffer, lightBuffer;
-	BufferObject[] modelBuffer, texturesBuffer;
+	BufferObject modelBuffer, texturesBuffer;
+	Matrix4f.Buffer texture;
 	
 	public void createVertexBuffer() {
 		int vdiv = 10; int hdiv = 10;
@@ -205,9 +151,9 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		desLayout = new DescriptorLayout(device, 2, 2);
 		desPool = new DescriptorPool(device, 96);
 		
-		desSet = new DescriptorSet[96];
-		modelBuffer = new BufferObject[96];
-		texturesBuffer = new BufferObject[96];
+		desSet = new DescriptorSet(device, desPool, desLayout);
+		modelBuffer = new BufferObject(physicalDevice, device);
+		texturesBuffer = new BufferObject(physicalDevice, device);
 		
 		float cube = 3f;
 		float cubeHalf = cube / 2f;
@@ -215,7 +161,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			Matrix4f.Buffer model = Matrix4f.callocStack(96, stack);
-			Matrix4f.Buffer texture = Matrix4f.callocStack(96, stack);
+			texture = Matrix4f.calloc(96);
 			for(int i = 0; i < 96; i++) model.get(i).identity();
 			
 			//FRONT FACE
@@ -287,21 +233,21 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				}
 			}
 			
-			for(int i = 0; i < 96; i++) {
-				modelBuffer[i] = new BufferObject(physicalDevice, device);
-				modelBuffer[i].createUniformBuffer(16 * 4);
-				texturesBuffer[i] = new BufferObject(physicalDevice, device);
-				texturesBuffer[i].createUniformBuffer(4 * 4 * 4);
-				desSet[i] = new DescriptorSet(device, desPool, desLayout);
+			//for(int i = 0; i < 96; i++) {
+				modelBuffer = new BufferObject(physicalDevice, device);
+				modelBuffer.createUniformBuffer(96 * 16 * 4);
+				texturesBuffer = new BufferObject(physicalDevice, device);
+				texturesBuffer.createUniformBuffer(96 * 4 * 4 * 4);
+				desSet = new DescriptorSet(device, desPool, desLayout);
 				
-				desSet[i].bind(viewProjectionBuffer, 0);
-				desSet[i].bind(modelBuffer[i], 1);
-				desSet[i].bind(texturesBuffer[i], 2);
-				desSet[i].bind(lightBuffer, 3);
+				desSet.bind(viewProjectionBuffer, 0);
+				desSet.bind(modelBuffer, 1);
+				desSet.bind(texturesBuffer, 2);
+				desSet.bind(lightBuffer, 3);
 				
-				modelBuffer[i].map(model.get(i));
-				texturesBuffer[i].map(texture.get(i));
-			}
+				modelBuffer.map(model);
+				texturesBuffer.map(texture);
+			//}
 		
 		}
 		lightPos.set(0, 0, 20f);
@@ -338,11 +284,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			cb.bindPipelineGraphics(pipeline);
 			cb.bindVertexBuffer(vertexBuffer);
 			cb.bindIndexBuffer(indexBuffer);
-			for(int j = 0; j < 96; j++) {
-				if(desSet[j] == null) break;
-				cb.bindUniforms(pipeline.layout, stack.longs(desSet[j].set));
-				cb.draw(indices.limit());
-			}
+			//for(int j = 0; j < 96; j++) {
+				//if(desSet[j] == null) break;
+				cb.bindUniforms(pipeline.layout, stack.longs(desSet.set));
+				cb.draw(indices.limit(), 96);
+			//}
 			cb.endRenderPass();
 			cb.end();
 		}
@@ -480,10 +426,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			}
 			
 			eAlt += 5f * Time.getDelta();
-			for(int i = 0; i < 4; i++) {
-				emissiveAlt.get(i).m03(0.0f).m13((float)Math.sin(eAlt)).m23((float)Math.cos(eAlt)).m33(1.0f);//Emissive
-				texturesBuffer[48 + i].map(emissiveAlt.get(i));
+			for(int i = 48; i < 52; i++) {
+				texture.get(i).m03(0.0f).m13((float)Math.sin(eAlt)).m23((float)Math.cos(eAlt)).m33(1.0f);//Emissive
+				
 			}
+			texturesBuffer.map(texture);
 			
 			IntBuffer ib = stack.mallocInt(1);
 			

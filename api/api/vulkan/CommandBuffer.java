@@ -85,7 +85,7 @@ public class CommandBuffer extends VkCommandBuffer {
 	public void draw(int vertexCount, int instanceCount, int firstVertex, int firstInstance) 
 	{vkCmdDraw(this, vertexCount, instanceCount, firstVertex, firstInstance);}
 	
-	public void draw(int indices) {vkCmdDrawIndexed(this, indices, 1, 0, 0, 0);}
+	public void draw(int indexCount, int instanceCount) {vkCmdDrawIndexed(this, indexCount, instanceCount, 0, 0, 0);}
 	
 	public void copyBuffer(long src, long dst, int size) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
