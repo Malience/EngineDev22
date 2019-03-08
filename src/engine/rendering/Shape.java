@@ -1,13 +1,14 @@
-package math;
+package engine.rendering;
 
 import java.nio.IntBuffer;
 
 import org.lwjgl.system.MemoryUtil;
 
 import api.vulkan.Vertex;
+import math.Constants;
 import util.Util;
 
-public class Sphere {
+public class Shape {
 	//TODO: Figure out why the radius breaks it
 	public static Vertex[] generateSphereVertices(float radius, int vdiv, int hdiv) {
 		int total = vdiv * hdiv + 2;

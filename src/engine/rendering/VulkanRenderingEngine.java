@@ -42,7 +42,6 @@ import engine.window.Window;
 import math.Constants;
 import math.Matrix4f;
 import math.Quaternion;
-import math.Sphere;
 import math.Vector3f;
 import math.Vector4f;
 
@@ -123,8 +122,8 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	
 	public void createVertexBuffer() {
 		int vdiv = 10; int hdiv = 10;
-		vertices = Sphere.generateSphereVertices(1f, vdiv, hdiv);
-		indices = Sphere.generateSphereIndices(vdiv, hdiv);
+		vertices = Shape.generateSphereVertices(1f, vdiv, hdiv);
+		indices = Shape.generateSphereIndices(vdiv, hdiv);
 		
 		vertexBuffer = new BufferObject(physicalDevice, device);
 		vertexBuffer.createVertexBuffer(vertices.length * Vertex.SIZEOF);
@@ -353,6 +352,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	public void run() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			InputAPI.pollEvents();
+			//TODO: Move input code out of renderer
 			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_PRESS) {
 				DoubleBuffer x = stack.mallocDouble(1), y = stack.mallocDouble(1);
 				GLFW.glfwGetCursorPos(window.getHandle(), x, y);
@@ -431,7 +431,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				
 			}
 			texturesBuffer.map(texture);
-			
+			//END Input code
 			IntBuffer ib = stack.mallocInt(1);
 			
 			long imageAvailableSemaphore = this.imageAvailableSemaphore[currentFrame];
@@ -456,6 +456,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			info.pSignalSemaphores(renderFinishedSemaphore);
 			graphicsQueue.submit(info, inFlightFence);
 			result = graphicsQueue.present(stack, swapchain.swapchain, renderFinishedSemaphore, imageIndex);
+			//Maybe remove resize code (I don't really need it)
 			if(result == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR || result == KHRSwapchain.VK_SUBOPTIMAL_KHR || framebufferResized) {
 				framebufferResized = false;
 				recreateSwapchain();
