@@ -14,7 +14,7 @@ import org.lwjgl.vulkan.VkFramebufferCreateInfo;
 public class Framebuffer {
 	private VkDevice device;
 	long[] framebuffers;
-	public Framebuffer(Device device, Swapchain swapchain, Imageview imageview, Renderpass renderpass, long depthBuffer) {
+	public Framebuffer(Device device, Swapchain swapchain, Imageview imageview, long renderpass, long depthBuffer) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			this.device = device.device;
 			LongBuffer lb = stack.mallocLong(1);
@@ -22,7 +22,7 @@ public class Framebuffer {
 			
 			VkFramebufferCreateInfo framebufferinfo = VkFramebufferCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
-			.renderPass(renderpass.renderpass)
+			.renderPass(renderpass)
 			.width(swapchain.extent.width())
 			.height(swapchain.extent.height())
 			.layers(1);

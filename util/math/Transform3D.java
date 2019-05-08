@@ -52,15 +52,25 @@ public class Transform3D {
 		Quaternion q = new Quaternion();
 		q.axisAngle(v, a);
 		rotate(q);
-		q.close();
 	}
+	public void rotate(float x, float y, float z) {
+		Quaternion q = new Quaternion();
+		q.euler(x, y, z);
+		rotate(q);
+	}
+	
+	public void scale(float x, float y, float z) {
+		scale.mul(x, y, z);
+		changed = true;
+	}
+	
 	
 	//~~~~~~~~~~~GETTERS~~~~~~~~~~~\\
 	
 	private void makeTransformation() {
-		if(!changed) return;
+		//if(!changed) return;
 		transform.translationRotateScale(pos, rot, scale);
-		if(parent != null) transform.mul(parent.transform(), transform);
+		if(parent != null) parent.transform().mul(transform, transform);
 		changed = false;
 	}
 	
@@ -69,5 +79,10 @@ public class Transform3D {
 		return transform;
 	}
 	
-	
+	public String toString() {
+		return
+				"Position: \t" + pos.x() + ", " + pos.y() + ", " + pos.z() + "\n" +
+				"Rotation: \t" + rot.x() + ", " + rot.y() + ", " + rot.z() + ", " + rot.w() + "\n" +
+				"Scale: \t\t" + scale.x() + ", " + scale.y() + ", " + scale.z();
+	}
 }

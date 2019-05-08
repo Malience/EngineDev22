@@ -45,6 +45,15 @@ public class Quaternion extends Struct implements NativeResource {
 		return set(rx * sinHalfAngle, ry * sinHalfAngle, rz * sinHalfAngle, (float)Math.cos(a));
 	}
 	
+	public Quaternion euler(float x, float y, float z) {
+		//TODO: More optimizations
+		float cx = (float)Math.cos(x * 0.5f), sx = (float)Math.sin(x * 0.5f);
+		float cy = (float)Math.cos(y * 0.5f), sy = (float)Math.sin(y * 0.5f);
+		float cz = (float)Math.cos(z * 0.5f), sz = (float)Math.sin(z * 0.5f);
+		float cxcy = cx * cy, cxsy = cx * sy, sxcy = sx * cy, sxsy = sx * sy;
+		return set(cxcy * sz + sxsy * cz, sxcy * cz + cxsy * sz, cxsy * cz - sxcy * sz, cxcy * cz - sxsy * sz);
+	}
+	
 	//~~~~~~~~~~~MULTIPLICATION~~~~~~~~~~~\\
 	
 	public Quaternion mul(Quaternion q) {return mul(q, this);}

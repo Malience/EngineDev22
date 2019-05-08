@@ -1,0 +1,178 @@
+{
+	"objects" : [
+		{
+			"parent" : -1,
+			"renderable" : 0,
+			"transform" : {
+				"position" : [0, 0, 0],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 1,
+			"transform" : {
+				"position" : [0, 5, 0],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : 0,
+			"renderable" : 2,
+			"transform" : {
+				"position" : [0, 0, 18],
+				"rotation" : [0, 90, 0],
+				"scale"	   : [1, 3, 1]
+			}
+		},
+		{
+			"parent" : 1,
+			"renderable" : 0,
+			"transform" : {
+				"position" : [-10, -10, 0],
+				"rotation" : [45, 0, 0],
+				"scale"	   : [0.5, 0.5, 0.5]
+			}
+		},
+		{
+			"parent" : 3,
+			"renderable" : 3,
+			"transform" : {
+				"position" : [2, 0, 0],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : 4,
+			"renderable" : 4,
+			"transform" : {
+				"position" : [0, 0, 7],
+				"rotation" : [0, 0, 45],
+				"scale"	   : [1, 1.2, 1]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 5,
+			"transform" : {
+				"position" : [0, -4, 0],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [10, 10, 10]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 6,
+			"transform" : {
+				"position" : [2, 0, 2],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 6,
+			"transform" : {
+				"position" : [5, 0, 5],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 6,
+			"transform" : {
+				"position" : [7, 0, 7],
+				"rotation" : [0, 0, 0],
+				"scale"	   : [1, 1, 1]
+			}
+		},
+		{
+			"parent" : -1,
+			"renderable" : 7,
+			"transform" : {
+				"position" : [9, -3, 9],
+				"rotation" : [0, 0, -90],
+				"scale"	   : [2, 2, 2]
+			}
+		}
+	],
+	
+	"renderables" : [
+		{
+			"model" : 0,
+			"material" : 0,
+			"texture" : 0
+		},
+		{
+			"model" : 1,
+			"material" : 1,
+			"texture" : -1
+		},
+		{
+			"model" : 0,
+			"material" : 0,
+			"texture" : 1
+		},
+		{
+			"model" : 0,
+			"material" : 0,
+			"texture" : 2
+		},
+		{
+			"model" : 0,
+			"material" : 0,
+			"texture" : 3
+		},
+		{
+			"model" : 2,
+			"material" : 0,
+			"texture" : 5
+		},
+		{
+			"model" : 3,
+			"material" : 0,
+			"texture" : 4
+		},
+		{
+			"model" : 4,
+			"material" : 0,
+			"texture" : 2
+		}
+	],
+	
+	"models" : [
+		"sphere",
+		"dragon.obj",
+		"plane3.obj",
+		"capsule.obj",
+		"paladin4.dae"
+	],
+	
+	"materials" : [
+		{
+			"ambientColor"   : [0.2, 0.2, 0.2, 1.0],
+			"diffuseColor"   : [1.0, 1.0, 1.0, 1.0],
+			"specularColor"  : [1.0, 1.0, 1.0, 32.0],
+			"emissiveColor"  : [0.0, 0.0, 0.0, 1.0],
+		},
+		{
+			"ambientColor"   : [0.2, 0.2, 0.2, 1.0],
+			"diffuseColor"   : [1.0, 0.0, 0.0, 1.0],
+			"specularColor"  : [0.0, 1.0, 0.0, 32.0],
+			"emissiveColor"  : [0.0, 0.0, 1.0, 1.0],
+		}
+	],
+	
+	"textures" : [
+		"bricks.png",
+		"cloth.jpg",
+		"concrete.jpg",
+		"rust.jpg",
+		"stone.jpg",
+		"wood.jpg"
+	]
+}

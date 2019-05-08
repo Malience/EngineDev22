@@ -19,9 +19,13 @@ layout(binding = 1) uniform ModelBuffer {
 	mat4[96] model;
 };
 
+layout(push_constant) uniform constants {
+	uint instanceOffset;
+};
+
 void main() {
-	instanceIndex = gl_InstanceIndex;
-	mat4 Model = model[gl_InstanceIndex];
+	instanceIndex = instanceOffset + gl_InstanceIndex;
+	mat4 Model = model[instanceIndex];
 	gl_Position = proj * view * Model * vec4(pos, 1.0);
     Pos = (view * Model * vec4(pos, 1.0)).xyz;//Into Eye space
     Normal = normalize(transpose(inverse(mat3(view * Model))) * normal); //In Eye space

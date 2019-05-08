@@ -2,6 +2,7 @@ package api.vulkan;
 
 import static org.lwjgl.vulkan.VK10.*;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
@@ -94,6 +95,10 @@ public class BufferObject {
 		load(queue, pool, MemoryUtil.memAddress(indices), indices.limit() * 4);
 	}
 	
+	public <SELF extends CustomBuffer<SELF>> void load(Queue queue, CommandPool pool, CustomBuffer<SELF> data) {
+		load(queue, pool, data.address(), data.sizeof() * data.limit());
+	}
+	
 	private long createBuffer(int size, int usage) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			//Create Buffer
@@ -141,6 +146,35 @@ public class BufferObject {
 		}
 	}
 	
+	public static void createBuffer(PhysicalDevice physicalDevice, Device device, long size, int usage, int properties, LongBuffer lb) {
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			VkBufferCreateInfo bufferInfo = VkBufferCreateInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+			.size(size)
+			.usage(usage)
+			.sharingMode(VK_SHARING_MODE_EXCLUSIVE);
+			
+			lb.position(0);
+			if(vkCreateBuffer(device.device, bufferInfo, null, lb) != VK_SUCCESS)
+				Debug.error("API", "Buffer creation failed!");
+			
+			VkMemoryRequirements memoryRequirements = VkMemoryRequirements.callocStack(stack);
+			vkGetBufferMemoryRequirements(device.device, lb.get(0), memoryRequirements);
+			
+			VkMemoryAllocateInfo allocateInfo = VkMemoryAllocateInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+			.allocationSize(memoryRequirements.size())
+			.memoryTypeIndex(PhysicalDevice.findMemoryType(physicalDevice, memoryRequirements.memoryTypeBits(), properties));
+			
+			lb.position(1);
+			if(vkAllocateMemory(device.device, allocateInfo, null, lb) != VK_SUCCESS)
+				Debug.error("API", "Buffer memory allocation failed!");
+			
+			vkBindBufferMemory(device.device, lb.get(0), lb.get(1), 0L);
+			lb.position(0);
+		}
+	}
+	
 	
 	public long map(int size) {return map(size, memory);}
 	private long map(int size, long memory) {
@@ -165,7 +199,9 @@ public class BufferObject {
 		}
 	}
 	
-	public void map(java.nio.Buffer data) {map(MemoryUtil.memAddress(data), data.limit());}
+	public void map(ByteBuffer data) {map(MemoryUtil.memAddress(data), data.limit());}
+	public void map(IntBuffer data) {map(MemoryUtil.memAddress(data), data.limit() * 4);}
+	public void map(FloatBuffer data) {map(MemoryUtil.memAddress(data), data.limit() * 4);}
 	public <SELF extends CustomBuffer<SELF>> void map(CustomBuffer<SELF> data) {map(data.address(), data.sizeof() * data.limit());}
 	public void map(Struct data) {map(data.address(), data.sizeof());}
 	

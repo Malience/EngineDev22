@@ -25,7 +25,7 @@ import api.vulkan.Image;
 import api.vulkan.Imageview;
 import api.vulkan.Instance;
 import api.vulkan.PhysicalDevice;
-import api.vulkan.Pipeline;
+import api.vulkan.GraphicsPipeline;
 import api.vulkan.Queue;
 import api.vulkan.QueueFamily;
 import api.vulkan.QueueSubmitInfo;
@@ -57,7 +57,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 	Imageview imageview;
 	Shader vert, frag;
 	Renderpass renderpass;
-	Pipeline pipeline;
+	GraphicsPipeline pipeline;
 	Framebuffer framebuffer;
 	CommandPool commandPool;
 	CommandBuffer[] commandBuffers;
@@ -101,37 +101,30 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		inFlightFence = device.createFence(MAX_FRAMES);
 	}
 	
-	Vertex[] vertices;
-	IntBuffer indices;
-	Quaternion rot = new Quaternion();
-	float x, y;
-	static Matrix4f.Buffer viewProjection;
-	static Matrix4f view, projection;
-	static {
-		viewProjection = Matrix4f.calloc(2);
-		view = viewProjection.get(0);
-		projection = viewProjection.get(1);
-	}
-	
 	DescriptorLayout desLayout;
 	DescriptorPool desPool;
 	DescriptorSet desSet;
-	BufferObject vertexBuffer, indexBuffer, viewProjectionBuffer, lightBuffer;
+	BufferObject viewProjectionBuffer, lightBuffer;
 	BufferObject modelBuffer, texturesBuffer;
 	Matrix4f.Buffer texture;
+	Camera mainCamera;
 	
 	public void createVertexBuffer() {
 		int vdiv = 10; int hdiv = 10;
-		vertices = Shape.generateSphereVertices(1f, vdiv, hdiv);
-		indices = Shape.generateSphereIndices(vdiv, hdiv);
+		Vertex[] vertices = Shape.generateSphereVertices(1f, vdiv, hdiv);
+		IntBuffer indices = Shape.generateSphereIndices(vdiv, hdiv);
 		
-		vertexBuffer = new BufferObject(physicalDevice, device);
-		vertexBuffer.createVertexBuffer(vertices.length * Vertex.SIZEOF);
-		vertexBuffer.load(graphicsQueue, commandPool, vertices);
+		sphere = new Model("sphere");
 		
-		indexBuffer = new BufferObject(physicalDevice, device);
-		indexBuffer.createIndexBuffer(indices.limit() * 4);
-		indexBuffer.load(graphicsQueue, commandPool, indices);
+		sphere.vertices = new BufferObject(physicalDevice, device);
+		sphere.vertices.createVertexBuffer(vertices.length * Vertex.SIZEOF);
+		sphere.vertices.load(graphicsQueue, commandPool, vertices);
+		
+		sphere.indices = new BufferObject(physicalDevice, device);
+		sphere.indices.createIndexBuffer(indices.limit() * 4);
+		sphere.indices.load(graphicsQueue, commandPool, indices);
+		
+		sphere.length = indices.remaining();
 		
 		viewProjectionBuffer = new BufferObject(physicalDevice, device);
 		viewProjectionBuffer.createUniformBuffer(16 * 4 * 2);
@@ -139,13 +132,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		lightBuffer = new BufferObject(physicalDevice, device);
 		lightBuffer.createUniformBuffer(4 * 3 * 4);
 		
-		float near = 0.1f, far = 40f;
-		float aspect = 800f / 600f;
+		mainCamera = new Camera();
 		
-		projection.perspective(90f, aspect, near, far);
-		view.identity();
-		view.translation(0, 0, distance);
-		viewProjectionBuffer.map(viewProjection);
+		mainCamera.setPerspective(90f, 800f, 600f, 0.1f, 40f);
+		mainCamera.view.translation(0, 0, distance);
+		viewProjectionBuffer.map(mainCamera.viewProjection);
 		
 		desLayout = new DescriptorLayout(device, 2, 2);
 		desPool = new DescriptorPool(device, 96);
@@ -239,22 +230,21 @@ public class VulkanRenderingEngine extends RenderingEngine {
 				texturesBuffer.createUniformBuffer(96 * 4 * 4 * 4);
 				desSet = new DescriptorSet(device, desPool, desLayout);
 				
-				desSet.bind(viewProjectionBuffer, 0);
-				desSet.bind(modelBuffer, 1);
-				desSet.bind(texturesBuffer, 2);
-				desSet.bind(lightBuffer, 3);
+				desSet.bindBuffer(viewProjectionBuffer, 0);
+				desSet.bindBuffer(modelBuffer, 1);
+				desSet.bindBuffer(texturesBuffer, 2);
+				desSet.bindBuffer(lightBuffer, 3);
 				
 				modelBuffer.map(model);
 				texturesBuffer.map(texture);
 			//}
-		
+			
 		}
 		lightPos.set(0, 0, 20f);
-		view.transform(lightPos);
+		mainCamera.view.transform(lightPos);
 		//projection.transform(lightPos);
 		v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 		v2.get(1).set(1, 1, 1, 1);
-		Matrix4f invView = view.invert(new Matrix4f());
 		v2.get(2).set(0, 0, -12, 1);
 		lightBuffer.map(v2);
 //		int format = Image.findFormat(physicalDevice, 
@@ -265,8 +255,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		image = Image.createImage(physicalDevice, device, 800, 600, format);
 		imageMemory = Image.allocateImage(physicalDevice, device, image, VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		imageView = Image.createImageView(device, image, format);
-		Image.transition(commandPool.createBuffer(), graphicsQueue, image, format, VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		//Image.transition(commandPool.createBuffer(), graphicsQueue, image, format, VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		
+		dragon = Model.load(physicalDevice, device, graphicsQueue, commandPool, "Basic Cube 2.obj");
 	}
+	Model sphere, dragon;
 	Matrix4f.Buffer emissiveAlt = Matrix4f.calloc(4);
 	Vector4f.Buffer v2 = Vector4f.calloc(3);
 	Vector3f lightPos = new Vector3f();
@@ -281,12 +274,16 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			cb.begin();
 			cb.beginRenderPass(renderpass, framebuffer.get(i), pipeline.extent.width(), pipeline.extent.height()); //TODO: HAck
 			cb.bindPipelineGraphics(pipeline);
-			cb.bindVertexBuffer(vertexBuffer);
-			cb.bindIndexBuffer(indexBuffer);
+//			cb.bindVertexBuffer(vertexBuffer);
+//			cb.bindIndexBuffer(indexBuffer);
+			cb.bindVertexBuffer(sphere.vertices);
+			cb.bindIndexBuffer(sphere.indices);
 			//for(int j = 0; j < 96; j++) {
 				//if(desSet[j] == null) break;
+				cb.pushConstants(pipeline.layout, VK10.VK_SHADER_STAGE_ALL, 0, stack.ints(0));
 				cb.bindUniforms(pipeline.layout, stack.longs(desSet.set));
-				cb.draw(indices.limit(), 96);
+//				cb.draw(indices.limit(), 96);
+				cb.draw(sphere.length, 96);
 			//}
 			cb.endRenderPass();
 			cb.end();
@@ -298,7 +295,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		swapchain = new Swapchain(device, surface);
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
-		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
+		pipeline = new GraphicsPipeline(device, swapchain, renderpass, desLayout, vert, frag);
 		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass, imageView);
 		recordCommandBuffer();
 	}
@@ -307,7 +304,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		swapchain = new Swapchain(device, surface, width, height);
 		imageview = new Imageview(device, swapchain);
 		renderpass = new Renderpass(device, swapchain);
-		pipeline = new Pipeline(device, swapchain, renderpass, desLayout, vert, frag);
+		pipeline = new GraphicsPipeline(device, swapchain, renderpass, desLayout, vert, frag);
 		framebuffer = new Framebuffer(device, swapchain, imageview, renderpass, imageView);
 		recordCommandBuffer();
 	}
@@ -329,7 +326,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			vkDeviceWaitIdle(device.device);
 			disposeSwapchain();
 			createSwapchain(w, h);
-			projection.perspective(90f, ((float)w.get(0))/((float)h.get(0)), 0.001f, 1000f);
+			//projection.perspective(90f, ((float)w.get(0))/((float)h.get(0)), 0.001f, 1000f);
 		}
 	}
 	
@@ -353,43 +350,12 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			InputAPI.pollEvents();
 			//TODO: Move input code out of renderer
-			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_PRESS) {
-				DoubleBuffer x = stack.mallocDouble(1), y = stack.mallocDouble(1);
-				GLFW.glfwGetCursorPos(window.getHandle(), x, y);
-				GLFW.glfwSetCursorPos(window.getHandle(), centerx, centery);
-				if(!held) {
-					GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_HIDDEN);
-					origx = (float)x.get(0); origy = (float)y.get(0);
-					held = true;
-				} else {
-					Quaternion q = new Quaternion();
-					float rotSpeed = 5;
-					rotx += (((float) x.get(0)) - centerx) * rotSpeed * Time.getDelta();
-					roty += (((float) y.get(0)) - centery) * rotSpeed * Time.getDelta();
-					if(roty > 89) roty = 89;
-					if(roty < -89) roty = -89;
-					cameraPos.set(0, 0, distance);
-					rot.axisAngle(1, 0, 0, roty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, rotx * Constants.RADIAN), rot);
-					view.setRotation(rot);
-					view.setTranslation(cameraPos);
-					viewProjectionBuffer.map(viewProjection);
-					Matrix4f invView = view.invert(new Matrix4f());
-					v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
-					lightBuffer.map(v2);
-				}
-				
-			}
-			if(GLFW.glfwGetMouseButton(window.getHandle(), GLFW.GLFW_MOUSE_BUTTON_1) == GLFW.GLFW_RELEASE && held) {
-				GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-				GLFW.glfwSetCursorPos(window.getHandle(), origx, origy);
-				held = false;
-			}
-			GLFW.glfwSetScrollCallback(window.getHandle(), (long window, double x, double y) -> {
-				float scrollSpeed = 0.5f;
-				distance += scrollSpeed * y;
-				view.translation(0, 0, distance);
-				viewProjectionBuffer.map(viewProjection);
-			});
+			mainCamera.update(window);
+			viewProjectionBuffer.map(mainCamera.viewProjection);
+			Matrix4f invView = mainCamera.view.invert(new Matrix4f());
+			v2.get(2).set(invView.m03(), invView.m13(), invView.m23(), 1);
+			lightBuffer.map(v2);
+			
 			float rotSpeed = 300;
 			boolean lightMoved = false;
 			if(	GLFW.glfwGetKey(window.getHandle(), GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS ||
@@ -415,11 +381,11 @@ public class VulkanRenderingEngine extends RenderingEngine {
 			if(lightMoved) {
 				lightPos.set(0, 0, -20f);
 				Quaternion q = new Quaternion();
-				rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN), rot);
+				mainCamera.rot.axisAngle(1, 0, 0, lightroty * Constants.RADIAN).mul(q.axisAngle(0, 1, 0, lightrotx * Constants.RADIAN), mainCamera.rot);
 				Matrix4f m = new Matrix4f();
-				m.setRotation(rot);
+				m.setRotation(mainCamera.rot);
 				m.transform(lightPos);
-				view.transform(lightPos);
+				mainCamera.view.transform(lightPos);
 				v2.get(0).set(lightPos.x(), lightPos.y(), lightPos.z());
 				lightBuffer.map(v2);
 				lightMoved = false;
@@ -477,7 +443,7 @@ public class VulkanRenderingEngine extends RenderingEngine {
 		
 		disposeSwapchain();
 		
-		vertexBuffer.destroy();
+		sphere.dispose();
 		vert.dispose();
 		frag.dispose();
 		commandPool.dispose();

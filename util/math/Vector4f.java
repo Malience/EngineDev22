@@ -38,6 +38,9 @@ public class Vector4f extends Struct implements NativeResource {
 	
 	public Vector4f duplicate() {return new Vector4f(this);}
 	
+	@Override
+	public String toString() {return x() + ", " + y() + ", " + z() + ", " + w();}
+	
 	//Stupid lwjgl generated boilerplate code\\
 	
     public static final int SIZEOF;

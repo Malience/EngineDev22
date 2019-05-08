@@ -43,17 +43,17 @@ public class Shape {
 		IntBuffer indices = MemoryUtil.memAllocInt(numIndices);
 		for(int i = 0; i < vdiv; i++) {
 			int x1 = 1 + i * hdiv, y1 = i != vdiv - 1 ? 1 + i * hdiv + hdiv : 1;
-			indices.put(0).put(x1).put(y1); //Top triangle
+			indices.put(0).put(y1).put(x1); //Top triangle
 			for(int j = 0; j < hdiv - 1; j++) {
-				indices.put(x1).put(x1 + 1).put(y1 + 1);
-				indices.put(x1).put(y1 + 1).put(y1);
+				indices.put(x1).put(y1 + 1).put(x1 + 1);
+				indices.put(x1).put(y1).put(y1 + 1);
 				x1++; y1++;
 			}
-			indices.put(x1).put(total - 1).put(y1); //Bot Triangle
+			indices.put(x1).put(y1).put(total - 1); //Bot Triangle
 		}
 		indices.flip();
 		
-		Util.printIntBuffer(indices);
+		//Util.printIntBuffer(indices);
 		return indices;
 	}
 }

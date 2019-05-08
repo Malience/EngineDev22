@@ -16,8 +16,11 @@ public class DescriptorPool {
 		this.device = device.device;
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			LongBuffer lb = stack.mallocLong(1);
-			VkDescriptorPoolSize.Buffer poolSize = VkDescriptorPoolSize.callocStack(1, stack)
+			VkDescriptorPoolSize.Buffer poolSize = VkDescriptorPoolSize.callocStack(2, stack)
 			.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			.descriptorCount(1);
+			poolSize.get(1)
+			.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 			.descriptorCount(1);
 			
 			VkDescriptorPoolCreateInfo poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)

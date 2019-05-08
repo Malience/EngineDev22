@@ -40,7 +40,7 @@ public class Renderpass {
 			.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
 			.stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 			.stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
-			.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+			.initialLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 			.finalLayout(VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 			.format(VK10.VK_FORMAT_D32_SFLOAT_S8_UINT);
 			
@@ -60,8 +60,8 @@ public class Renderpass {
 			VkSubpassDependency.Buffer dependency = VkSubpassDependency.callocStack(1, stack)
 			.srcSubpass(VK_SUBPASS_EXTERNAL)
 			.dstSubpass(0)
-			.srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-			.srcAccessMask(0)
+			.srcStageMask(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+			.srcAccessMask(VK_ACCESS_MEMORY_READ_BIT)
 			.dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
 			.dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 			

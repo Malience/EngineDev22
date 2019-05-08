@@ -20,8 +20,8 @@ struct Material {
 	vec4 emissive;
 };
 
-layout(binding = 2) uniform TextureBuffer { //Because these would be textures in more complex shaders
-	Material[96] material;
+layout(binding = 2) uniform MaterialBuffer {
+	Material[256] material;
 };
 
 layout(binding = 3) uniform LightBuffer {
